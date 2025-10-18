@@ -122,12 +122,19 @@
     <!-- //footer -->
 </div>
 
-<script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=ef339sn8hq&submodules=panorama"></script>
+<script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
 
 <script>
+    // Naver Map API 인증 실패 처리
+    window.navermap_authFailure = function() {
+        console.error('Naver Map API 인증 실패');
+        alert('지도를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.');
+    };
 
     let HOME_PATH = window.HOME_PATH || '.';
 
+    let map, markers = [], infoWindows = [], openedInfoWindow = null;
+    let curPosInfoWindow;
 
     let MarkerData = [
         {
@@ -328,23 +335,79 @@
             "img": "img/bar33.jpg",
             "detail": "경기 안양시 만안구 안양동 948-1 양지2소공원에 있는 2단 철봉"
         }
-    ]
-    let map = new naver.maps.Map('map', {
-        center: new naver.maps.LatLng(37.48, 127.035),
-        zoom: 13
-    });
+    ];
 
-    let bounds = map.getBounds(),
-        southWest = bounds.getSW(),
-        northEast = bounds.getNE(),
-        lngSpan = northEast.lng() - southWest.lng(),
-        latSpan = northEast.lat() - southWest.lat();
+    // Naver Map API 로드 완료 후 호출되는 콜백 함수
+    function initMap() {
+        try {
+            map = new naver.maps.Map('map', {
+                center: new naver.maps.LatLng(37.48, 127.035),
+                zoom: 13,
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: naver.maps.Position.TOP_RIGHT
+                }
+            });
 
-    let markers = [],
-        infoWindows = [];
-    let openedInfoWindow = null;
+            curPosInfoWindow = new naver.maps.InfoWindow();
 
-    let curPosInfoWindow = new naver.maps.InfoWindow();
+            // 마커 초기화
+            initializeMarkers();
+
+            // 이벤트 리스너 등록
+            setupEventListeners();
+
+            // 현재 위치로 이동
+            setCurrentPosition();
+
+        } catch (error) {
+            console.error('지도 초기화 실패:', error);
+            alert('지도를 초기화하는 중 오류가 발생했습니다.');
+        }
+    }
+
+    // 마커 초기화 함수
+    function initializeMarkers() {
+        for (let i in MarkerData) {
+            let data = MarkerData[i];
+            let position = new naver.maps.LatLng(data.pos[0], data.pos[1]);
+
+            let marker = new naver.maps.Marker({
+                map: map,
+                position: position,
+                title: data.title,
+                zIndex: 100
+            });
+
+            let infoWindow = new naver.maps.InfoWindow({
+                content: `<div class="infowindow"><b>${data.title}</b><p>${data.detail}</p><br><img class="bar-img" src="${data.img}" alt="${data.title}"/></div>`
+            });
+
+            markers.push(marker);
+            infoWindows.push(infoWindow);
+        }
+    }
+
+    // 이벤트 리스너 설정
+    function setupEventListeners() {
+        // 지도 이동 완료 시 마커 업데이트
+        naver.maps.Event.addListener(map, 'idle', function() {
+            updateMarkers(map, markers);
+        });
+
+        // 각 마커에 클릭 이벤트 등록
+        for (let i = 0; i < markers.length; i++) {
+            naver.maps.Event.addListener(markers[i], 'click', getClickHandler(i));
+        }
+
+        // 지도 클릭 시 열린 InfoWindow 닫기
+        naver.maps.Event.addListener(map, 'click', function() {
+            curPosInfoWindow.close();
+            if (openedInfoWindow && openedInfoWindow.getMap()) {
+                openedInfoWindow.close();
+            }
+        });
+    }
 
     function onSuccessGeolocation(position) {
         let location = new naver.maps.LatLng(position.coords.latitude,
@@ -377,41 +440,11 @@
              * chrome.exe --unsafely-treat-insecure-origin-as-secure="http://example.com"
              */
             navigator.geolocation.getCurrentPosition(onSuccessGeolocation, onErrorGeolocation);
-
         } else {
             console.log("Geolocation이 지원되지 않습니다.");
-            alert("Cannot get current position");
-            // let center = map.getCenter();
-            // infowindow.setContent('<div style="padding:20px;"><h5 style="margin-bottom:5px;color:#f00;">Geolocation not supported</h5></div>');
-            // infowindow.open(map, center);
+            alert("현재 위치를 가져올 수 없습니다.");
         }
     };
-    document.addEventListener("DOMContentLoaded", setCurrentPosition);
-
-    
-
-    for (let i in MarkerData) {
-        let data = MarkerData[i];
-        let position = new naver.maps.LatLng(data.pos[0], data.pos[1]);
-
-        let marker = new naver.maps.Marker({
-            map: map,
-            position: position,
-            title: data.title,
-            zIndex: 100
-        });
-
-        let infoWindow = new naver.maps.InfoWindow({
-            content: `<div class="infowindow"><b>${data.title}</b><p>${data.detail}</p><br><img class="bar-img" src="${data.img}" alt="${data.title}"/></div>`
-        });
-
-        markers.push(marker);
-        infoWindows.push(infoWindow);
-    };
-
-    naver.maps.Event.addListener(map, 'idle', function() {
-        updateMarkers(map, markers);
-    });
 
     function updateMarkers(map, markers) {
 
@@ -432,13 +465,11 @@
     }
 
     function showMarker(map, marker) {
-
         if (marker.setMap()) return;
         marker.setMap(map);
     }
 
     function hideMarker(map, marker) {
-
         if (!marker.setMap()) return;
         marker.setMap(null);
     }
@@ -458,23 +489,9 @@
         }
     }
 
-
-    for (let i=0, ii=markers.length; i<ii; i++) {
-        naver.maps.Event.addListener(markers[i], 'click', getClickHandler(i));
-    }
-
-    naver.maps.Event.addListener(map, 'click', function() {
-        curPosInfoWindow.close();
-        if (openedInfoWindow && openedInfoWindow.getMap()) {
-            openedInfoWindow.close();
-        }
-    });
-
-
 </script>
 <!-- <script type="text/javascript" src="https://wcs.naver.net/wcslog.js"></script> -->
 
 
 </body>
 </html>
-

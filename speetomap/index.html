@@ -1,188 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
-    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no"> -->
-    <meta name="HandheldFriendly" content="true" />
-
-    <meta content="origin-when-cross-origin" name="referrer">
-    <title>스피또여지도</title>
-    <link rel="apple-touch-icon" sizes="200x200"
-        href="https://navermaps.github.io/maps.js.ncp/docs/img/logo_200x200.png">
-    <link rel="canonical" href="https://navermaps.github.io/maps.js.ncp">
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-169641735-1"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-
-        gtag('config', 'UA-169641735-1');
-    </script>
-
-
-    <style>
-        html {
-            -ms-content-zooming: none;
-            -ms-touch-action: pan-x pan-y;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-        }
-
-        #wrap {
-            height: 100vh;
-        }
-
-        #header {
-            overflow: hidden;
-            position: fixed;
-            top: 0;
-            width: 100%;
-            height: 75px;
-            margin: 0 auto;
-            background: #fff;
-            border-radius: 5px;
-            z-index: 101;
-        }
-
-        .inner_header h1 {
-            padding-left: 15px;
-        }
-
-        #container {
-            height: 100%;
-        }
-
-        .api_position {
-            width: 100%;
-            min-height: 500px;
-            height: 100%;
-        }
-
-        #footer {
-            overflow: hidden;
-            position: fixed;
-            bottom: 0;
-            padding-top: 10px;
-            padding-left: 10px;
-            height: 35px;
-            width: 100%;
-            z-index: 100;
-            background-color: #fff;
-            font-size: 15px;
-        }
-
-        a {
-            color: black;
-        }
-
-        a:link {
-            color: black;
-        }
-
-        .upper-float {
-            position: fixed;
-            width: 60px;
-            height: 60px;
-            top: 40px;
-            right: 40px;
-            background-color: rgb(57, 155, 235);
-            color: #FFF;
-            border-radius: 50px;
-            text-align: center;
-            box-shadow: 2px 2px 3px #999;
-            font-size: 13px;
-            z-index: 102;
-        }
-
-        .float {
-            position: fixed;
-            width: 60px;
-            height: 60px;
-            bottom: 20px;
-            right: 40px;
-            background-color: #0C9;
-            color: #FFF;
-            border-radius: 50px;
-            text-align: center;
-            box-shadow: 2px 2px 3px #999;
-            font-size: 40px;
-            z-index: 101;
-        }
-
-        .infowindow {
-            width: 225px;
-            text-align: center;
-            padding: 5px;
-        }
-
-        .spinner-container {
-            background-color: rgb(57, 64, 62);
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            z-index: 103;
-            opacity: 0.7;
-        }
-
-        .loader,
-        .loader:after {
-            border-radius: 50%;
-            width: 10em;
-            height: 10em;
-        }
-
-        .loader {
-            top: 0;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            z-index: 103;
-            margin: auto;
-            position: absolute;
-            font-size: 10px;
-            text-indent: -9999em;
-            border-top: 1.1em solid rgba(255, 255, 255, 0.2);
-            border-right: 1.1em solid rgba(255, 255, 255, 0.2);
-            border-bottom: 1.1em solid rgba(255, 255, 255, 0.2);
-            border-left: 1.1em solid #ffffff;
-            -webkit-transform: translateZ(0);
-            -ms-transform: translateZ(0);
-            transform: translateZ(0);
-            -webkit-animation: load8 1.1s infinite linear;
-            animation: load8 1.1s infinite linear;
-        }
-
-        @-webkit-keyframes load8 {
-            0% {
-                -webkit-transform: rotate(0deg);
-                transform: rotate(0deg);
-            }
-
-            100% {
-                -webkit-transform: rotate(360deg);
-                transform: rotate(360deg);
-            }
-        }
-
-        @keyframes load8 {
-            0% {
-                -webkit-transform: rotate(0deg);
-                transform: rotate(0deg);
-            }
-
-            100% {
-                -webkit-transform: rotate(360deg);
-                transform: rotate(360deg);
-            }
-        }
-    </style>
+    <meta http-equiv="refresh" content="0; url=https://xn--hq1b875a9xc.com/speetomap/"></meta>
 </head>
-
 <body>
     <div id="spinner" class="spinner-container">
         <div class="loader">
@@ -217,29 +37,108 @@
         <!-- //footer -->
     </div>
 
-    <script type="text/javascript"
-        src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=ef339sn8hq&submodules=panorama"></script>
+    <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
 
     <script>
+        // Naver Map API 인증 실패 처리
+        window.navermap_authFailure = function() {
+            console.error('Naver Map API 인증 실패');
+            alert('지도를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.');
+            // 스피너 숨기기
+            let spinner = document.getElementById('spinner');
+            if (spinner) {
+                spinner.style.visibility = 'hidden';
+            }
+        };
 
         let HOME_PATH = window.HOME_PATH || '.';
 
-        let map = new naver.maps.Map('map', {
-            center: new naver.maps.LatLng(37.48, 127.035),
-            zoom: 15
-        });
+        let map, markers = [], infoWindows = [], openedInfoWindow = null;
+        let curPosInfoWindow;
+        let rawMarkerData = [];
 
-        let bounds = map.getBounds(),
-            southWest = bounds.getSW(),
-            northEast = bounds.getNE(),
-            lngSpan = northEast.lng() - southWest.lng(),
-            latSpan = northEast.lat() - southWest.lat();
+        // Naver Map API 로드 완료 후 호출되는 콜백 함수
+        function initMap() {
+            try {
+                map = new naver.maps.Map('map', {
+                    center: new naver.maps.LatLng(37.48, 127.035),
+                    zoom: 15,
+                    zoomControl: true,
+                    zoomControlOptions: {
+                        position: naver.maps.Position.TOP_RIGHT
+                    }
+                });
 
-        let markers = [],
-            infoWindows = [];
-        let openedInfoWindow = null;
+                curPosInfoWindow = new naver.maps.InfoWindow();
 
-        let curPosInfoWindow = new naver.maps.InfoWindow();
+                // 이벤트 리스너 설정
+                setupEventListeners();
+
+                // 현재 위치로 이동
+                setCurrentPosition();
+
+                // 마커 데이터 로드
+                loadMarkerData();
+
+            } catch (error) {
+                console.error('지도 초기화 실패:', error);
+                alert('지도를 초기화하는 중 오류가 발생했습니다.');
+                let spinner = document.getElementById('spinner');
+                if (spinner) {
+                    spinner.style.visibility = 'hidden';
+                }
+            }
+        }
+
+        // 마커 데이터 로드
+        function loadMarkerData() {
+            console.log("마커 데이터 로드 시작");
+            let spinner = document.getElementById('spinner');
+            spinner.style.visibility = 'visible';
+
+            fetch("./speeto-map.json")
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('네트워크 응답이 올바르지 않습니다.');
+                    }
+                    return response.json();
+                })
+                .then(MarkerData => {
+                    rawMarkerData = MarkerData.map(item => {
+                        item.position = new naver.maps.LatLng(item.pos[0], item.pos[1]);
+                        return item;
+                    });
+
+                    console.log(`${rawMarkerData.length}개의 마커 데이터 로드 완료`);
+                    spinner.style.visibility = 'hidden';
+                    
+                    // 초기 마커 업데이트
+                    setTimeout(() => {
+                        updateMarkers(map, markers);
+                    }, 0);
+                })
+                .catch(error => {
+                    console.error('마커 데이터 로드 실패:', error);
+                    alert('판매점 데이터를 불러오는데 실패했습니다.');
+                    spinner.style.visibility = 'hidden';
+                });
+        }
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 지도 클릭 시 열린 InfoWindow 닫기
+            naver.maps.Event.addListener(map, 'click', function() {
+                curPosInfoWindow.close();
+                if (openedInfoWindow && openedInfoWindow.getMap()) {
+                    openedInfoWindow.close();
+                }
+            });
+
+            // 지도 이동 완료 시 마커 업데이트 (선택적 - 현재는 수동 refresh 사용)
+            // naver.maps.Event.addListener(map, 'idle', function() {
+            //     updateMarkers(map, markers);
+            // });
+        }
 
         function onSuccessGeolocation(position) {
             let location = new naver.maps.LatLng(position.coords.latitude,
@@ -272,100 +171,96 @@
                  * chrome.exe --unsafely-treat-insecure-origin-as-secure="http://example.com"
                  */
                 navigator.geolocation.getCurrentPosition(onSuccessGeolocation, onErrorGeolocation);
-
             } else {
                 console.log("Geolocation이 지원되지 않습니다.");
-                alert("Cannot get current position");
-                // let center = map.getCenter();
-                // infowindow.setContent('<div style="padding:20px;"><h5 style="margin-bottom:5px;color:#f00;">Geolocation not supported</h5></div>');
-                // infowindow.open(map, center);
+                alert("현재 위치를 가져올 수 없습니다.");
             }
         };
-        document.addEventListener("DOMContentLoaded", setCurrentPosition);
 
-
-        fetch("./speeto-map.json").then(data => data.json()).then(MarkerData => {
-            for (let i in MarkerData) {
-                // console.log(`Progress ${i}/${MarkerData.length} ${new Date()}`);
-                let data = MarkerData[i];
-                let position = new naver.maps.LatLng(data.pos[0], data.pos[1]);
-
-                let marker = new naver.maps.Marker({
-                    map: map,
-                    position: position,
-                    title: data.title,
-                    zIndex: 100
-                });
-
-                let sell_items = [];
-                if (data.speeto500 === "Y") sell_items.push("<li>스피또500</li>");
-                if (data.speeto1000 === "Y") sell_items.push("<li>스피또1000</li>");
-                if (data.speeto2000 === "Y") sell_items.push("<li>스피또2000</li>");
-                if (data.annuity === "Y") sell_items.push("<li>연금복권</li>");
-                let infoWindow = new naver.maps.InfoWindow({
-                    content:
-                        `<div class="infowindow">` +
-                        `<b>${data.title}</b>` +
-                        `<p>주소: ${data.addr}</p>` +
-                        `<ul>${sell_items.join("")}</ul>` +
-                        `</div>`
-                });
-
-                markers.push(marker);
-                infoWindows.push(infoWindow);
-            };
-
-            for (let i = 0, ii = markers.length; i < ii; i++) {
-                // console.log(`Progress ${i}/${ii} ${new Date()}`);
-                naver.maps.Event.addListener(markers[i], 'click', getClickHandler(i));
-            }
-
-            naver.maps.Event.addListener(map, 'click', function () {
-                curPosInfoWindow.close();
-                if (openedInfoWindow && openedInfoWindow.getMap()) {
-                    openedInfoWindow.close();
-                }
+        // 마커 생성 함수
+        function processMarker(data, markers, infoWindows) {
+            let marker = new naver.maps.Marker({
+                map: map,
+                position: data.position,
+                title: data.title,
+                zIndex: 100
+            });
+            let sell_items = [];
+            if (data.speeto500 === "Y") sell_items.push("<li>스피또500</li>");
+            if (data.speeto1000 === "Y") sell_items.push("<li>스피또1000</li>");
+            if (data.speeto2000 === "Y") sell_items.push("<li>스피또2000</li>");
+            if (data.annuity === "Y") sell_items.push("<li>연금복권</li>");
+            let infoWindow = new naver.maps.InfoWindow({
+                content:
+                    `<div class="infowindow">` +
+                    `<b>${data.title}</b>` +
+                    `<p>주소: ${data.addr}</p>` +
+                    `<ul>${sell_items.join("")}</ul>` +
+                    `</div>`
             });
 
-            updateMarkers(map, markers);
+            let retIndex = markers.length;
+            markers.push(marker);
+            infoWindows.push(infoWindow);
+            return retIndex;
+        }
 
-        });
-
-        // naver.maps.Event.addListener(map, 'idle', function() {
-        //     updateMarkers(map, markers);
-        // });
-
+        // 마커 업데이트 함수 (최적화된 버전)
         function updateMarkers(map, markers) {
-            console.log("Loader!")
+            if (!map || !rawMarkerData) return;
+
             let spinner = document.getElementById('spinner');
             spinner.style.visibility = 'visible';
+            console.log("마커 업데이트 시작", spinner.style.visibility);
+            
+            setTimeout(() => {
+                let ts0 = new Date().getTime();
 
-            let mapBounds = map.getBounds();
-            let marker, position;
-
-            for (let i = 0; i < markers.length; i++) {
-                // console.log(`Progress3 ${i}/${markers.length} ${new Date()}`);
-                marker = markers[i]
-                position = marker.getPosition();
-
-                if (mapBounds.hasLatLng(position)) {
-                    showMarker(map, marker);
-                } else {
-                    hideMarker(map, marker);
+                let mapBounds = map.getBounds();
+    
+                // 현재 뷰포트에 있는 미처리 마커 처리
+                for (let item of rawMarkerData) {
+                    if (item.processed) continue;
+                    if (mapBounds.hasLatLng(item.position)) {
+                        let markerIndex = processMarker(item, markers, infoWindows);
+                        item.processed = true;
+                        naver.maps.Event.addListener(markers[markerIndex], 'click', getClickHandler(markerIndex));
+                    }
                 }
-            }
-            console.log("Unloader!");
-            spinner.style.visibility = 'hidden';
+    
+                let ts1 = new Date().getTime();
+                console.log(`마커 전처리 완료: ${ts1-ts0}ms / 전체 ${rawMarkerData.length}개`);
+    
+                // 처리된 마커 제거
+                rawMarkerData = rawMarkerData.filter(item => !item.processed);
+                
+                let ts2 = new Date().getTime();
+                console.log(`미처리 마커 필터링 완료: ${ts2-ts1}ms / 남은 ${rawMarkerData.length}개`);
+    
+                // 현재 뷰포트에 맞게 마커 표시/숨김
+                for (let i = 0; i < markers.length; i++) {
+                    let marker = markers[i];
+                    let position = marker.getPosition();
+                    
+                    if (mapBounds.hasLatLng(position)) {
+                        showMarker(map, marker);
+                    } else {
+                        hideMarker(map, marker);
+                    }
+                }
+
+                spinner.style.visibility = 'hidden';
+                let ts3 = new Date().getTime();
+                console.log(`마커 표시/숨김 완료: ${ts3-ts2}ms / 표시된 마커 ${markers.length}개`);
+            }, 1);
         }
 
         function showMarker(map, marker) {
-
             if (marker.setMap()) return;
             marker.setMap(map);
         }
 
         function hideMarker(map, marker) {
-
             if (!marker.setMap()) return;
             marker.setMap(null);
         }
@@ -385,14 +280,9 @@
             }
         }
 
-
-
-
-
     </script>
     <!-- <script type="text/javascript" src="https://wcs.naver.net/wcslog.js"></script> -->
 
 
+        
 </body>
-
-</html>
