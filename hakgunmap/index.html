@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>학군여지도 — 학교 통계 지도</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --c-elem: #2ecc71;   /* 초 */
+            --c-mid:  #3498db;   /* 중 */
+            --c-high: #e74c3c;   /* 고 */
+            --ink: #1f2937;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+            --bg: #f8fafc;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+            color: var(--ink);
+        }
+        /* 네이버 지도는 컨테이너 position 을 relative 로 덮어써서 inset:0 만으로는
+           높이가 0 으로 붕괴된다. 명시적 100vw/100vh 로 화면을 꽉 채운다. */
+        #map { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+
+        /* ── 헤더 ── */
+        #header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.96);
+            box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+            backdrop-filter: blur(6px);
+        }
+        #header h1 {
+            font-size: 18px; margin: 0; font-weight: 800; letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 7px;
+        }
+        #header h1 .dot {
+            width: 11px; height: 11px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--c-elem), var(--c-mid), var(--c-high));
+        }
+        .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .lvl-toggles { display: flex; gap: 6px; }
+        .lvl-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 11px; border-radius: 999px; cursor: pointer;
+            font-size: 13px; font-weight: 700; border: 1.5px solid var(--line);
+            background: #fff; color: var(--muted); user-select: none;
+            transition: all .15s;
+        }
+        .lvl-btn .swatch { width: 10px; height: 10px; border-radius: 50%; }
+        .lvl-btn.on[data-lvl="초"] { border-color: var(--c-elem); color: #fff; background: var(--c-elem); }
+        .lvl-btn.on[data-lvl="중"] { border-color: var(--c-mid);  color: #fff; background: var(--c-mid); }
+        .lvl-btn.on[data-lvl="고"] { border-color: var(--c-high); color: #fff; background: var(--c-high); }
+        .lvl-btn.on .swatch { background: #fff !important; }
+
+        select, input[type=search] {
+            font-size: 13px; padding: 6px 10px; border: 1.5px solid var(--line);
+            border-radius: 8px; background: #fff; color: var(--ink); outline: none;
+        }
+        input[type=search] { width: 150px; }
+        select:focus, input:focus { border-color: var(--c-mid); }
+        #count { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+
+        /* ── 범례 ── */
+        #legend {
+            position: fixed; left: 16px; bottom: 16px; z-index: 20;
+            background: rgba(255,255,255,0.96); border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12); padding: 11px 13px;
+            font-size: 12px; line-height: 1.7;
+        }
+        #legend b { font-size: 12.5px; }
+        #legend .row { display: flex; align-items: center; gap: 7px; }
+        #legend .sz { display: flex; align-items: flex-end; gap: 8px; margin-top: 6px; }
+        #legend .bubble { border-radius: 50%; background: #9ca3af55; border: 2px solid #9ca3af; }
+        #legend .data-info {
+            margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line);
+            font-size: 11px; color: var(--muted); line-height: 1.6;
+        }
+        #legend .data-info b { color: #374151; font-weight: 700; }
+
+        /* ── 상세 패널 ── */
+        #panel {
+            position: fixed; top: 0; right: 0; z-index: 40;
+            width: 380px; max-width: 92vw; height: 100%;
+            background: var(--bg); box-shadow: -4px 0 24px rgba(0,0,0,0.16);
+            transform: translateX(105%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
+        #panel.open { transform: translateX(0); }
+        .panel-head {
+            position: sticky; top: 0; z-index: 2; padding: 16px 18px 13px;
+            color: #fff; background: var(--c-mid);
+        }
+        .panel-head.초 { background: linear-gradient(135deg, #27ae60, var(--c-elem)); }
+        .panel-head.중 { background: linear-gradient(135deg, #2576c0, var(--c-mid)); }
+        .panel-head.고 { background: linear-gradient(135deg, #c0392b, var(--c-high)); }
+        .panel-head .close {
+            position: absolute; top: 12px; right: 12px; cursor: pointer;
+            width: 30px; height: 30px; border-radius: 50%; border: none;
+            background: rgba(255,255,255,0.22); color: #fff; font-size: 17px; line-height: 1;
+        }
+        .panel-head .badges { display: flex; gap: 6px; margin-bottom: 8px; }
+        .panel-head .badge {
+            font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+            background: rgba(255,255,255,0.22);
+        }
+        .panel-head h2 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.5px; }
+        .panel-head .addr { margin: 5px 0 0; font-size: 12.5px; opacity: 0.92; }
+
+        .panel-body { padding: 14px 16px 40px; }
+        .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 6px; }
+        .kpi {
+            background: #fff; border: 1px solid var(--line); border-radius: 12px;
+            padding: 11px 13px;
+        }
+        .kpi .label { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+        .kpi .value { font-size: 23px; font-weight: 800; margin-top: 2px; letter-spacing: -0.5px; }
+        .kpi .value small { font-size: 13px; font-weight: 600; color: var(--muted); }
+        .kpi .cmp { font-size: 11px; margin-top: 3px; font-weight: 600; }
+        .cmp.up { color: var(--c-high); }
+        .cmp.down { color: var(--c-elem); }
+        .cmp.flat { color: var(--muted); }
+
+        .card {
+            background: #fff; border: 1px solid var(--line); border-radius: 12px;
+            padding: 13px 14px; margin-top: 12px;
+        }
+        .card h3 {
+            margin: 0 0 10px; font-size: 13.5px; font-weight: 700;
+            display: flex; justify-content: space-between; align-items: baseline;
+        }
+        .card h3 .sub { font-size: 11.5px; color: var(--muted); font-weight: 500; }
+        .chart-wrap { position: relative; height: 190px; }
+        .chart-wrap.sm { height: 150px; }
+
+        .meta { font-size: 12.5px; line-height: 1.85; color: #374151; }
+        .meta .k { color: var(--muted); display: inline-block; width: 66px; }
+        .meta a { color: var(--c-mid); text-decoration: none; word-break: break-all; }
+
+        /* ── 스피너 ── */
+        #spinner {
+            position: fixed; inset: 0; z-index: 60; display: flex;
+            align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.85); font-weight: 700; color: var(--muted);
+        }
+        #spinner.hidden { display: none; }
+        .loader { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .loader .ring {
+            width: 38px; height: 38px; border: 4px solid var(--line);
+            border-top-color: var(--c-mid); border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 현재위치 버튼 */
+        .geo-btn {
+            position: fixed; right: 16px; bottom: 16px; z-index: 20;
+            width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
+            background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+            font-size: 20px; color: var(--c-mid);
+        }
+
+        @media (max-width: 640px) {
+            #header h1 span.t { display: none; }
+            input[type=search] { width: 110px; }
+            #panel { width: 100%; max-width: 100%; height: 78%; top: auto; bottom: 0;
+                     border-radius: 18px 18px 0 0; transform: translateY(105%); }
+            #panel.open { transform: translateY(0); }
+            #legend { display: none; }
+            .geo-btn { bottom: calc(16px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="header">
+        <h1><span class="dot"></span><span class="t">학군여지도</span></h1>
+        <div class="controls">
+            <div class="lvl-toggles" id="lvlToggles">
+                <span class="lvl-btn on" data-lvl="초"><span class="swatch"></span>초</span>
+                <span class="lvl-btn on" data-lvl="중"><span class="swatch"></span>중</span>
+                <span class="lvl-btn on" data-lvl="고"><span class="swatch"></span>고</span>
+            </div>
+            <select id="regionSel"><option value="">전체 지역</option></select>
+            <input type="search" id="search" placeholder="학교 검색…">
+            <span id="count"></span>
+        </div>
+    </div>
+
+    <div id="legend">
+        <b>마커 보기</b>
+        <div class="row"><span class="swatch" style="width:11px;height:11px;border-radius:50%;background:var(--c-elem)"></span> 초등학교</div>
+        <div class="row"><span class="swatch" style="width:11px;height:11px;border-radius:50%;background:var(--c-mid)"></span> 중학교</div>
+        <div class="row"><span class="swatch" style="width:11px;height:11px;border-radius:50%;background:var(--c-high)"></span> 고등학교</div>
+        <div style="margin-top:6px;color:var(--muted)">원 크기 = 학생수</div>
+        <div class="sz">
+            <span class="bubble" style="width:16px;height:16px"></span>
+            <span class="bubble" style="width:28px;height:28px"></span>
+            <span class="bubble" style="width:40px;height:40px"></span>
+        </div>
+        <div class="data-info" id="dataInfo"></div>
+    </div>
+
+    <button class="geo-btn" onclick="goCurrentPosition()" title="현재 위치">◎</button>
+
+    <div id="panel">
+        <div class="panel-head" id="panelHead">
+            <button class="close" onclick="closePanel()">✕</button>
+            <div class="badges" id="panelBadges"></div>
+            <h2 id="panelName"></h2>
+            <p class="addr" id="panelAddr"></p>
+        </div>
+        <div class="panel-body" id="panelBody"></div>
+    </div>
+
+    <div id="spinner">
+        <div class="loader"><div class="ring"></div><div>학교 데이터를 불러오는 중…</div></div>
+    </div>
+
+    <script type="text/javascript"
+        src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
+    <script>
+    // ── 학교급별 색상 ──
+    const LVL_COLOR = { "초": "#2ecc71", "중": "#3498db", "고": "#e74c3c" };
+    const LVL_NAME  = { "초": "초등학교", "중": "중학교", "고": "고등학교" };
+
+    let map, schools = [], items = [];   // items: { data, marker }
+    let activeLevels = new Set(["초", "중", "고"]);
+    let activeRegion = "";
+    let openedId = null;
+    let groupAvg = {};                   // 지역+급 평균(비교용)
+    let charts = [];                     // 패널 Chart 인스턴스
+    let curPosMarker = null;
+
+    // 네이버 지도 인증 실패(클라이언트 ID에 현재 도메인 미등록 등) 시 안내.
+    window.navermap_authFailure = function () { showMapError('auth'); };
+
+    function initMap() {
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(37.402, 126.95),   // 안양/수원 일대
+            zoom: 13,
+            zoomControl: true,
+            zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
+        });
+        naver.maps.Event.addListener(map, 'click', closePanel);
+
+        // 타일이 일정 시간 안에 로드되지 않으면(주로 도메인 미등록 인증 실패)
+        // 빈 화면 대신 원인/해결법 배너를 띄운다.
+        let tilesLoaded = false;
+        naver.maps.Event.addListener(map, 'tilesloaded', () => { tilesLoaded = true; });
+        setTimeout(() => { if (!tilesLoaded) showMapError('tiles'); }, 4500);
+
+        loadData();
+    }
+
+    function showMapError(kind) {
+        if (document.getElementById('mapError')) return;   // 중복 방지
+        const spinner = document.getElementById('spinner');
+        if (spinner) spinner.classList.add('hidden');
+        const origin = location.origin;
+        const div = document.createElement('div');
+        div.id = 'mapError';
+        div.innerHTML =
+            `<div class="map-error-card">
+                <div class="ttl">🗺️ 지도를 표시할 수 없습니다</div>
+                <p>네이버 지도 API가 현재 주소에서 인증되지 않았습니다.<br>
+                아래 주소가 네이버 클라우드 플랫폼의 <b>Maps 애플리케이션 ‘Web 서비스 URL’</b>에
+                등록돼 있어야 지도가 보입니다.</p>
+                <code>${origin}</code>
+                <p class="hint">· 운영 도메인(yeojido.com)에서는 정상 동작합니다.<br>
+                · 로컬 확인 시 콘솔에서 위 주소를 등록한 뒤 새로고침하세요.</p>
+            </div>`;
+        document.getElementById('map').appendChild(div);
+    }
+
+    function loadData() {
+        fetch('./school-map.json')
+            .then(r => { if (!r.ok) throw new Error('네트워크 오류'); return r.json(); })
+            .then(data => {
+                schools = data.filter(s => Array.isArray(s.pos));
+                schools.forEach((s, i) => { s._id = i; });
+                computeAverages();
+                buildRegionOptions();
+                fillDataInfo();
+                buildMarkers();
+                applyFilter();
+                document.getElementById('spinner').classList.add('hidden');
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('spinner').innerHTML =
+                    '<div style="color:#e74c3c;font-weight:700">데이터를 불러오지 못했습니다.</div>';
+            });
+    }
+
+    // 지역+학교급별 평균(교원1인당·학급당·학생수) — 패널의 "지역 평균 대비"에 사용
+    function computeAverages() {
+        const acc = {};
+        for (const s of schools) {
+            if (!s.학생수) continue;            // 데이터 없는 학교 제외
+            const key = s.지역 + '|' + s.학교급;
+            (acc[key] = acc[key] || []).push(s);
+        }
+        for (const key in acc) {
+            const arr = acc[key];
+            const avg = f => arr.reduce((a, s) => a + (s[f] || 0), 0) / arr.length;
+            groupAvg[key] = {
+                교원1인당_학생수: avg('교원1인당_학생수'),
+                학급당_학생수: avg('학급당_학생수'),
+                학생수: avg('학생수'),
+                n: arr.length
+            };
+        }
+    }
+
+    // 데이터 기준(공시년도)과 수집일 범위를 범례에 표시 — 최신성 판단용.
+    function fillDataInfo() {
+        const dates = schools.map(s => s.date).filter(Boolean).sort();
+        const years = [...new Set(schools.map(s => s.공시년도).filter(Boolean))].sort();
+        if (!dates.length && !years.length) return;
+        const dmin = dates[0], dmax = dates[dates.length - 1];
+        const dateTxt = !dates.length ? '–' : (dmin === dmax ? dmin : `${dmin} ~ ${dmax}`);
+        const yearTxt = years.length ? years.join('·') + '학년도' : '–';
+        document.getElementById('dataInfo').innerHTML =
+            `<b>공시기준</b> ${yearTxt}<br><b>수집일</b> ${dateTxt}`;
+    }
+
+    function buildRegionOptions() {
+        const regions = [...new Set(schools.map(s => s.지역))].sort();
+        const sel = document.getElementById('regionSel');
+        for (const r of regions) {
+            const o = document.createElement('option');
+            o.value = r; o.textContent = r;
+            sel.appendChild(o);
+        }
+    }
+
+    // 마커 반지름: 학생수에 비례(sqrt 스케일)
+    function radiusOf(n) {
+        return Math.max(7, Math.min(27, 6 + Math.sqrt(n || 0) / 2.1));
+    }
+
+    function markerHtml(s) {
+        const c = LVL_COLOR[s.학교급] || '#888';
+        const r = radiusOf(s.학생수);
+        const d = r * 2;
+        const hl = (s._id === openedId);
+        return `<div style="width:${d}px;height:${d}px;border-radius:50%;
+            background:${c}80;border:2px solid ${c};box-sizing:border-box;
+            ${hl ? 'box-shadow:0 0 0 4px ' + c + '55, 0 0 0 2px #fff;' : ''}
+            cursor:pointer;transition:box-shadow .15s;"></div>`;
+    }
+
+    function buildMarkers() {
+        items = schools.map(s => {
+            const r = radiusOf(s.학생수);
+            const marker = new naver.maps.Marker({
+                position: new naver.maps.LatLng(s.pos[0], s.pos[1]),
+                title: s.title,
+                zIndex: Math.round(s.학생수 || 0),
+                icon: {
+                    content: markerHtml(s),
+                    anchor: new naver.maps.Point(r, r)
+                }
+            });
+            naver.maps.Event.addListener(marker, 'click', () => openPanel(s));
+            return { data: s, marker };
+        });
+    }
+
+    function refreshMarkerIcon(it) {
+        const r = radiusOf(it.data.학생수);
+        it.marker.setIcon({ content: markerHtml(it.data), anchor: new naver.maps.Point(r, r) });
+    }
+
+    function applyFilter() {
+        let shown = 0;
+        for (const it of items) {
+            const s = it.data;
+            const ok = activeLevels.has(s.학교급) && (!activeRegion || s.지역 === activeRegion);
+            it.marker.setMap(ok ? map : null);
+            if (ok) shown++;
+        }
+        document.getElementById('count').textContent = `${shown}개교`;
+    }
+
+    // ── 상세 패널 ──
+    function fmt(n, d = 0) {
+        if (n === null || n === undefined) return '–';
+        return Number(n).toLocaleString('ko-KR', { maximumFractionDigits: d });
+    }
+
+    function cmpHtml(value, avg, lowerIsBetter) {
+        if (value == null || avg == null || !isFinite(avg) || avg === 0) return '';
+        const diff = value - avg;
+        const pct = (diff / avg) * 100;
+        let cls = 'flat', arrow = '≈';
+        if (Math.abs(pct) >= 3) {
+            const better = lowerIsBetter ? diff < 0 : diff > 0;
+            cls = better ? 'down' : 'up';
+            arrow = diff > 0 ? '▲' : '▼';
+        }
+        return `<div class="cmp ${cls}">지역평균 ${fmt(avg, 1)} 대비 ${arrow} ${fmt(Math.abs(pct), 0)}%</div>`;
+    }
+
+    function openPanel(s) {
+        openedId = s._id;
+        items.forEach(refreshMarkerIcon);
+        map.panTo(new naver.maps.LatLng(s.pos[0], s.pos[1]));
+
+        const head = document.getElementById('panelHead');
+        head.className = 'panel-head ' + s.학교급;
+        document.getElementById('panelBadges').innerHTML =
+            `<span class="badge">${LVL_NAME[s.학교급] || s.학교급}</span>` +
+            `<span class="badge">${s.지역}</span>` +
+            (s.설립구분 ? `<span class="badge">${s.설립구분}</span>` : '');
+        document.getElementById('panelName').textContent = s.title;
+        document.getElementById('panelAddr').textContent = s.addr || '';
+
+        const key = s.지역 + '|' + s.학교급;
+        const avg = groupAvg[key] || {};
+        const noData = !s.학생수;
+
+        let html = '';
+        // KPI
+        html += '<div class="kpis">';
+        html += kpi('학생수', fmt(s.학생수), '명',
+            `남 ${fmt(s.학생수_남)} · 여 ${fmt(s.학생수_여)}`);
+        html += kpi('교원수', fmt(s.교원수), '명',
+            `남 ${fmt(s.교원수_남)} · 여 ${fmt(s.교원수_여)}`);
+        html += kpi('교원 1인당 학생수', fmt(s.교원1인당_학생수, 1), '명',
+            cmpHtml(s.교원1인당_학생수, avg.교원1인당_학생수, true));
+        html += kpi('학급당 학생수', fmt(s.학급당_학생수, 1), '명',
+            cmpHtml(s.학급당_학생수, avg.학급당_학생수, true));
+        html += '</div>';
+
+        if (noData) {
+            html += '<div class="card" style="text-align:center;color:var(--muted)">' +
+                '해당 연도 공시 학생 데이터가 없습니다.</div>';
+        } else {
+            // 학년별 학생수 차트
+            html += `<div class="card"><h3>학년별 학생수 <span class="sub">남 / 여</span></h3>
+                <div class="chart-wrap"><canvas id="gradeChart"></canvas></div></div>`;
+            // 성별 비율 차트
+            html += `<div class="card"><h3>성별 구성</h3>
+                <div class="chart-wrap sm"><canvas id="genderChart"></canvas></div></div>`;
+        }
+
+        // 메타
+        html += '<div class="card meta">';
+        if (s.설립일자) html += `<div><span class="k">설립</span>${s.설립구분 || ''} ${s.설립유형 || ''} · ${s.설립일자}</div>`;
+        if (s.관할교육청) html += `<div><span class="k">교육청</span>${s.관할교육청}</div>`;
+        if (s.공시년도) html += `<div><span class="k">공시년도</span>${s.공시년도}학년도 기준</div>`;
+        if (s.date) html += `<div><span class="k">수집일</span>${s.date}</div>`;
+        if (s.홈페이지) {
+            const url = /^https?:\/\//.test(s.홈페이지) ? s.홈페이지 : 'http://' + s.홈페이지;
+            html += `<div><span class="k">홈페이지</span><a href="${url}" target="_blank" rel="noopener">${s.홈페이지}</a></div>`;
+        }
+        if (avg.n) html += `<div style="margin-top:6px;color:var(--muted);font-size:11.5px">` +
+            `※ 지역평균은 ‘${s.지역} ${LVL_NAME[s.학교급]}’ ${avg.n}개교 기준</div>`;
+        html += '</div>';
+
+        document.getElementById('panelBody').innerHTML = html;
+        document.getElementById('panel').classList.add('open');
+
+        // 차트 렌더
+        charts.forEach(c => c.destroy());
+        charts = [];
+        if (!noData) renderCharts(s);
+    }
+
+    function kpi(label, value, unit, extra) {
+        return `<div class="kpi"><div class="label">${label}</div>
+            <div class="value">${value}<small> ${unit}</small></div>
+            ${extra ? (extra.startsWith('<') ? extra : `<div class="cmp flat">${extra}</div>`) : ''}</div>`;
+    }
+
+    function renderCharts(s) {
+        Chart.defaults.font.family = "'Malgun Gothic', sans-serif";
+        Chart.defaults.font.size = 11;
+
+        const grades = s.학년별_학생수 || {};
+        const labels = Object.keys(grades);
+        const boys = labels.map(g => grades[g].남 || 0);
+        const girls = labels.map(g => grades[g].여 || 0);
+
+        charts.push(new Chart(document.getElementById('gradeChart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: '남', data: boys, backgroundColor: '#4e79a7', borderRadius: 4, stack: 'g' },
+                    { label: '여', data: girls, backgroundColor: '#f28e8c', borderRadius: 4, stack: 'g' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10 } },
+                    tooltip: {
+                        callbacks: {
+                            footer: it => {
+                                const i = it[0].dataIndex;
+                                return '계 ' + ((boys[i] || 0) + (girls[i] || 0)) + '명';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: true, grid: { display: false } },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        }));
+
+        charts.push(new Chart(document.getElementById('genderChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['남학생', '여학생'],
+                datasets: [{
+                    data: [s.학생수_남 || 0, s.학생수_여 || 0],
+                    backgroundColor: ['#4e79a7', '#f28e8c'], borderWidth: 2, borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '62%',
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 12, padding: 10 } },
+                    tooltip: {
+                        callbacks: {
+                            label: c => {
+                                const tot = (s.학생수_남 || 0) + (s.학생수_여 || 0);
+                                const p = tot ? Math.round(c.parsed / tot * 100) : 0;
+                                return ` ${c.label}: ${c.parsed}명 (${p}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        }));
+    }
+
+    function closePanel() {
+        document.getElementById('panel').classList.remove('open');
+        openedId = null;
+        items.forEach(refreshMarkerIcon);
+    }
+
+    // ── 컨트롤 이벤트 ──
+    document.getElementById('lvlToggles').addEventListener('click', e => {
+        const btn = e.target.closest('.lvl-btn');
+        if (!btn) return;
+        const lvl = btn.dataset.lvl;
+        if (activeLevels.has(lvl)) { activeLevels.delete(lvl); btn.classList.remove('on'); }
+        else { activeLevels.add(lvl); btn.classList.add('on'); }
+        applyFilter();
+    });
+    document.getElementById('regionSel').addEventListener('change', e => {
+        activeRegion = e.target.value;
+        applyFilter();
+        // 선택 지역으로 화면 이동
+        if (activeRegion) {
+            const pts = schools.filter(s => s.지역 === activeRegion);
+            if (pts.length) {
+                const b = new naver.maps.LatLngBounds(
+                    new naver.maps.LatLng(pts[0].pos[0], pts[0].pos[1]),
+                    new naver.maps.LatLng(pts[0].pos[0], pts[0].pos[1]));
+                pts.forEach(s => b.extend(new naver.maps.LatLng(s.pos[0], s.pos[1])));
+                map.fitBounds(b);
+            }
+        }
+    });
+    document.getElementById('search').addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        const q = e.target.value.trim();
+        if (!q) return;
+        const hit = schools.find(s => s.title.includes(q) &&
+            activeLevels.has(s.학교급) && (!activeRegion || s.지역 === activeRegion))
+            || schools.find(s => s.title.includes(q));
+        if (hit) {
+            map.setZoom(16);
+            map.panTo(new naver.maps.LatLng(hit.pos[0], hit.pos[1]));
+            openPanel(hit);
+        } else {
+            alert('검색 결과가 없습니다: ' + q);
+        }
+    });
+
+    // ── 현재 위치 ──
+    function goCurrentPosition() {
+        if (!navigator.geolocation) return alert('현재 위치를 사용할 수 없습니다.');
+        navigator.geolocation.getCurrentPosition(p => {
+            const loc = new naver.maps.LatLng(p.coords.latitude, p.coords.longitude);
+            map.setCenter(loc); map.setZoom(15);
+            if (curPosMarker) curPosMarker.setMap(null);
+            curPosMarker = new naver.maps.Marker({
+                position: loc, map,
+                icon: { content: '<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px #2563eb"></div>',
+                        anchor: new naver.maps.Point(8, 8) }
+            });
+        }, () => alert('현재 위치를 가져올 수 없습니다.'));
+    }
+    </script>
+</body>
+</html>
