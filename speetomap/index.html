@@ -64,6 +64,30 @@
         .chip.on .sw { background: #fff !important; }
         #count { font-size: 12.5px; color: var(--muted); font-weight: 600; white-space: nowrap; }
 
+        /* ── 여지도 전환 메뉴 ── */
+        .ymenu { position: relative; }
+        .ymenu-trigger {
+            display: flex; align-items: center; gap: 7px; cursor: pointer;
+            background: none; border: none; padding: 2px 4px; font-family: inherit;
+            font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: var(--ink);
+        }
+        .ymenu-trigger .tk { font-size: 17px; }
+        .ymenu-trigger .caret { font-size: 11px; color: var(--muted); }
+        .ymenu-pop {
+            position: absolute; top: calc(100% + 9px); left: 0; min-width: 212px;
+            background: #fff; border: 1px solid var(--line); border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.16); padding: 6px; z-index: 50; display: none;
+        }
+        .ymenu-pop.open { display: block; }
+        .ymi {
+            display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 8px;
+            text-decoration: none; color: var(--ink); font-size: 13.5px; font-weight: 600;
+        }
+        .ymi:hover { background: #f3f4f6; }
+        .ymi.active { background: #eef2ff; color: #4f46e5; }
+        .ymi .ico { font-size: 16px; width: 20px; text-align: center; }
+        .ymi-sep { height: 1px; background: var(--line); margin: 5px 6px; }
+
         /* ── 범례 ── */
         #legend {
             position: fixed; left: 16px; bottom: 16px; z-index: 20;
@@ -133,7 +157,7 @@
         .iw .date { font-size: 10.5px; color: #9ca3af; margin-top: 8px; }
 
         @media (max-width: 640px) {
-            #header h1 span.t { display: none; }
+            .ymenu-trigger .t { display: none; }
             #legend { padding: 9px 11px; }
         }
     </style>
@@ -142,7 +166,18 @@
     <div id="map"></div>
 
     <div id="header">
-        <h1><span class="tk">🎟️</span><span class="t">스피또 여지도</span></h1>
+        <div class="ymenu">
+            <button class="ymenu-trigger" onclick="toggleYmenu(event)">
+                <span class="tk">🎟️</span><span class="t">스피또 여지도</span><span class="caret">▾</span>
+            </button>
+            <div class="ymenu-pop" id="ymenuPop">
+                <a class="ymi" href="/"><span class="ico">🏠</span>여지도 홈</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi active" href="/speetomap/"><span class="ico">🎟️</span>스피또 여지도</a>
+                <a class="ymi" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
+                <a class="ymi" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
+            </div>
+        </div>
         <div class="controls" id="chips">
             <span class="chip on" data-g="speeto2000"><span class="sw"></span>스피또2000</span>
             <span class="chip on" data-g="speeto1000"><span class="sw"></span>스피또1000</span>
@@ -394,6 +429,16 @@
         infoWindow.close();
         updateAllIcons();   // 켜진 종류에 맞춰 마커 점 구성 갱신
         refresh();
+    });
+
+    // ── 여지도 전환 메뉴 ──
+    function toggleYmenu(e) {
+        e.stopPropagation();
+        document.getElementById('ymenuPop').classList.toggle('open');
+    }
+    document.addEventListener('click', () => {
+        const p = document.getElementById('ymenuPop');
+        if (p) p.classList.remove('open');
     });
 
     // ── 현재 위치 ──

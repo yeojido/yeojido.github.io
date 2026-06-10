@@ -3,30 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>여지도 닷컴</title>
+    <title>여지도 — 지도로 보는 우리 동네 정보</title>
+    <style>
+        :root {
+            --ink: #1f2937; --muted: #6b7280; --line: #e8eaf0;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+            color: var(--ink);
+            background: radial-gradient(1200px 600px at 50% -10%, #eef2ff 0%, #f8fafc 45%, #f8fafc 100%);
+        }
+        .wrap { max-width: 920px; margin: 0 auto; padding: 64px 20px 60px; }
+
+        .hero { text-align: center; margin-bottom: 44px; }
+        .logo {
+            display: inline-flex; align-items: center; gap: 10px;
+            font-size: 40px; font-weight: 900; letter-spacing: -1.5px;
+        }
+        .logo .pin {
+            width: 16px; height: 16px; border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #ec4899, #f59e0b);
+            box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+        }
+        .hero p {
+            margin: 12px 0 0; font-size: 16px; color: var(--muted); font-weight: 500;
+        }
+
+        .grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+        }
+        .card {
+            display: flex; flex-direction: column; text-decoration: none; color: inherit;
+            background: #fff; border: 1px solid var(--line); border-radius: 18px;
+            padding: 24px 22px 22px; position: relative; overflow: hidden;
+            transition: transform .18s cubic-bezier(.4,0,.2,1), box-shadow .18s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 14px 34px rgba(0,0,0,0.12); }
+        .card .bar { position: absolute; top: 0; left: 0; right: 0; height: 5px; }
+        .card.speeto .bar { background: linear-gradient(90deg, #e74c3c, #f39c12); }
+        .card.hakgun .bar { background: linear-gradient(90deg, #2ecc71, #3498db); }
+        .card.bar     .bar { background: linear-gradient(90deg, #6366f1, #06b6d4); }
+        .card .emoji {
+            font-size: 38px; width: 64px; height: 64px; border-radius: 16px;
+            display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+        }
+        .card.speeto .emoji { background: #fdecea; }
+        .card.hakgun .emoji { background: #eafaf1; }
+        .card.bar     .emoji { background: #eef2ff; }
+        .card h2 { margin: 0 0 7px; font-size: 19px; font-weight: 800; letter-spacing: -0.5px; }
+        .card p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.55; flex: 1; }
+        .card .go {
+            margin-top: 16px; font-size: 13px; font-weight: 700; color: #4f46e5;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .card .go .arr { transition: transform .18s; }
+        .card:hover .go .arr { transform: translateX(4px); }
+
+        footer {
+            text-align: center; margin-top: 48px; font-size: 12.5px; color: var(--muted);
+        }
+        footer a { color: var(--muted); }
+
+        @media (max-width: 720px) {
+            .wrap { padding: 44px 16px 44px; }
+            .grid { grid-template-columns: 1fr; gap: 14px; }
+            .logo { font-size: 34px; }
+        }
+    </style>
 </head>
 <body>
-    <h1>여지도.com</h1>
-    <ul>
-        <a href="/barmap">
-            <li>
-                철봉 여지도
-            </li>
-        </a>
-    </ul>
-    <ul>
-        <a href="/speetomap">
-            <li>
-                스피또 복권 여지도
-            </li>
-        </a>
-    </ul>
-    <ul>
-        <a href="/hakgunmap">
-            <li>
-                학군 여지도
-            </li>
-        </a>
-    </ul>
+    <div class="wrap">
+        <div class="hero">
+            <div class="logo"><span class="pin"></span>여지도</div>
+            <p>지도로 보는 우리 동네 정보</p>
+        </div>
+
+        <div class="grid">
+            <a class="card speeto" href="/speetomap/">
+                <span class="bar"></span>
+                <div class="emoji">🎟️</div>
+                <h2>스피또 여지도</h2>
+                <p>전국 복권 판매점 지도. 스피또2000·1000·500·연금복권 취급 여부를 한눈에.</p>
+                <span class="go">지도 열기 <span class="arr">→</span></span>
+            </a>
+
+            <a class="card hakgun" href="/hakgunmap/">
+                <span class="bar"></span>
+                <div class="emoji">🎓</div>
+                <h2>학군 여지도</h2>
+                <p>학교별 학생수·교원수·학년별 학생수·학급당 학생수 통계를 그래프로.</p>
+                <span class="go">지도 열기 <span class="arr">→</span></span>
+            </a>
+
+            <a class="card bar" href="/barmap/">
+                <span class="bar"></span>
+                <div class="emoji">🏋️</div>
+                <h2>철봉 여지도</h2>
+                <p>동네 철봉·평행봉 위치 지도. 사진과 함께 운동 장소를 찾아보세요.</p>
+                <span class="go">지도 열기 <span class="arr">→</span></span>
+            </a>
+        </div>
+
+        <footer>
+            Made by <a href="https://eine.tistory.com/entry/%ED%8F%89%ED%96%89%EB%B4%89-%EB%B0%8F-%EC%B2%A0%EB%B4%89-%EC%A7%80%EB%8F%84-%EA%B0%9C%EB%B0%9C%EA%B8%B0" target="_blank" rel="noopener">Einstrasse</a>
+        </footer>
+    </div>
 </body>
 </html>

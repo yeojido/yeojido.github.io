@@ -33,19 +33,45 @@
             height: 100vh;
         }
         #header {
-            overflow: hidden;
+            overflow: visible;
+            display: flex;
+            align-items: center;
             position: fixed;
             top: 0;
             width: 100%;
-            height: 75px;
+            height: 62px;
             margin: 0 auto;
-            background: #fff;
-            border-radius: 5px;
+            padding: 0 16px;
+            background: rgba(255,255,255,0.96);
+            box-shadow: 0 1px 8px rgba(0,0,0,0.08);
             z-index: 101;
         }
         .inner_header h1 {
             padding-left: 15px;
         }
+        /* ── 여지도 전환 메뉴 ── */
+        .ymenu { position: relative; }
+        .ymenu-trigger {
+            display: flex; align-items: center; gap: 7px; cursor: pointer;
+            background: none; border: none; padding: 2px 4px; font-family: inherit;
+            font-size: 19px; font-weight: 800; letter-spacing: -0.5px; color: #1f2937;
+        }
+        .ymenu-trigger .tk { font-size: 18px; }
+        .ymenu-trigger .caret { font-size: 11px; color: #6b7280; }
+        .ymenu-pop {
+            position: absolute; top: calc(100% + 9px); left: 0; min-width: 212px;
+            background: #fff; border: 1px solid #e8eaf0; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.16); padding: 6px; z-index: 200; display: none;
+        }
+        .ymenu-pop.open { display: block; }
+        .ymi {
+            display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 8px;
+            text-decoration: none; color: #1f2937; font-size: 13.5px; font-weight: 600;
+        }
+        .ymi:hover { background: #f3f4f6; }
+        .ymi.active { background: #eef2ff; color: #4f46e5; }
+        .ymi .ico { font-size: 16px; width: 20px; text-align: center; }
+        .ymi-sep { height: 1px; background: #e8eaf0; margin: 5px 6px; }
         #container {
             height: 100%;
         }
@@ -102,8 +128,17 @@
     <button onclick="setCurrentPosition();" class="float">+</button>
     <!-- header -->
     <div id="header">
-        <div class="inner_header">
-            <h1>철봉여지도</h1>
+        <div class="ymenu">
+            <button class="ymenu-trigger" onclick="toggleYmenu(event)">
+                <span class="tk">🏋️</span><span class="t">철봉 여지도</span><span class="caret">▾</span>
+            </button>
+            <div class="ymenu-pop" id="ymenuPop">
+                <a class="ymi" href="/"><span class="ico">🏠</span>여지도 홈</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi" href="/speetomap/"><span class="ico">🎟️</span>스피또 여지도</a>
+                <a class="ymi" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
+                <a class="ymi active" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
+            </div>
         </div>
     </div>
     <!-- //header -->
@@ -488,6 +523,16 @@
             }
         }
     }
+
+    // ── 여지도 전환 메뉴 ──
+    function toggleYmenu(e) {
+        e.stopPropagation();
+        document.getElementById('ymenuPop').classList.toggle('open');
+    }
+    document.addEventListener('click', function () {
+        var p = document.getElementById('ymenuPop');
+        if (p) p.classList.remove('open');
+    });
 
 </script>
 <!-- <script type="text/javascript" src="https://wcs.naver.net/wcslog.js"></script> -->
