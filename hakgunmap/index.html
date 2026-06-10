@@ -145,8 +145,8 @@
         .kpi .value { font-size: 23px; font-weight: 800; margin-top: 2px; letter-spacing: -0.5px; }
         .kpi .value small { font-size: 13px; font-weight: 600; color: var(--muted); }
         .kpi .cmp { font-size: 11px; margin-top: 3px; font-weight: 600; }
-        .cmp.up { color: var(--c-high); }
-        .cmp.down { color: var(--c-elem); }
+        .cmp.above { color: var(--c-mid); }   /* 지역평균보다 높음 = 파랑 */
+        .cmp.below { color: var(--c-high); }  /* 지역평균보다 낮음 = 빨강 */
         .cmp.flat { color: var(--muted); }
 
         .card {
@@ -430,14 +430,14 @@
         return Number(n).toLocaleString('ko-KR', { maximumFractionDigits: d });
     }
 
-    function cmpHtml(value, avg, lowerIsBetter) {
+    // 지역평균과의 방향만 색으로 구분: 높으면 파랑(above), 낮으면 빨강(below).
+    function cmpHtml(value, avg) {
         if (value == null || avg == null || !isFinite(avg) || avg === 0) return '';
         const diff = value - avg;
         const pct = (diff / avg) * 100;
         let cls = 'flat', arrow = '≈';
         if (Math.abs(pct) >= 3) {
-            const better = lowerIsBetter ? diff < 0 : diff > 0;
-            cls = better ? 'down' : 'up';
+            cls = diff > 0 ? 'above' : 'below';
             arrow = diff > 0 ? '▲' : '▼';
         }
         return `<div class="cmp ${cls}">지역평균 ${fmt(avg, 1)} 대비 ${arrow} ${fmt(Math.abs(pct), 0)}%</div>`;
@@ -469,17 +469,19 @@
         html += kpi('교원수', fmt(s.교원수), '명',
             `남 ${fmt(s.교원수_남)} · 여 ${fmt(s.교원수_여)}`);
         html += kpi('교원 1인당 학생수', fmt(s.교원1인당_학생수, 1), '명',
-            cmpHtml(s.교원1인당_학생수, avg.교원1인당_학생수, true));
+            cmpHtml(s.교원1인당_학생수, avg.교원1인당_학생수));
         html += kpi('학급당 학생수', fmt(s.학급당_학생수, 1), '명',
-            cmpHtml(s.학급당_학생수, avg.학급당_학생수, true));
+            cmpHtml(s.학급당_학생수, avg.학급당_학생수));
+        if (s.학급수 != null)
+            html += kpi('학급수', fmt(s.학급수), '개', classKpiExtra(s.학년별_학급수));
         html += '</div>';
 
         if (noData) {
             html += '<div class="card" style="text-align:center;color:var(--muted)">' +
                 '해당 연도 공시 학생 데이터가 없습니다.</div>';
         } else {
-            // 학년별 학생수 차트
-            html += `<div class="card"><h3>학년별 학생수 <span class="sub">남 / 여</span></h3>
+            // 학년별 학생수 차트 (툴팁에 학년별 학급수도 함께 표시)
+            html += `<div class="card"><h3>학년별 학생수 <span class="sub">막대=학생(남/여) · 선=학급수</span></h3>
                 <div class="chart-wrap"><canvas id="gradeChart"></canvas></div></div>`;
             // 성별 비율 차트
             html += `<div class="card"><h3>성별 구성</h3>
@@ -515,6 +517,16 @@
             ${extra ? (extra.startsWith('<') ? extra : `<div class="cmp flat">${extra}</div>`) : ''}</div>`;
     }
 
+    // 학급수 KPI 보조설명: 일반학년 합계와 특수/순회 등 기타 학급을 나눠 표시
+    function classKpiExtra(byGrade) {
+        if (!byGrade) return '';
+        let reg = 0, etc = 0;
+        for (const [g, n] of Object.entries(byGrade)) {
+            if (/^\d+학년$/.test(g)) reg += n; else etc += n;
+        }
+        return etc ? `일반 ${reg} · 특수 등 ${etc}` : `일반 ${reg}`;
+    }
+
     function renderCharts(s) {
         Chart.defaults.font.family = "'Malgun Gothic', sans-serif";
         Chart.defaults.font.size = 11;
@@ -524,15 +536,36 @@
         const boys = labels.map(g => grades[g].남 || 0);
         const girls = labels.map(g => grades[g].여 || 0);
 
+        // 학년별 학급수 → 막대 위에 꺾은선(우측 보조축)으로 표시
+        const classCnt = s.학년별_학급수 || {};
+        const hasClass = Object.keys(classCnt).length > 0;
+        const classes = labels.map(g => (g in classCnt ? classCnt[g] : null));
+        const classMax = Math.max(1, ...classes.filter(v => v != null));
+
+        const datasets = [
+            { label: '남', data: boys, backgroundColor: '#4e79a7', borderRadius: 4, stack: 'g', order: 2 },
+            { label: '여', data: girls, backgroundColor: '#f28e8c', borderRadius: 4, stack: 'g', order: 2 }
+        ];
+        if (hasClass) datasets.push({
+            type: 'line', label: '학급수', data: classes, yAxisID: 'y1',
+            borderColor: '#1f2937', backgroundColor: '#1f2937', borderWidth: 2.5,
+            tension: 0.3, pointRadius: 3, pointHoverRadius: 5, spanGaps: true, order: 0
+        });
+
+        const scales = {
+            x: { stacked: true, grid: { display: false } },
+            y: { stacked: true, beginAtZero: true, ticks: { precision: 0 },
+                 title: { display: true, text: '학생수(명)', font: { size: 10 } } }
+        };
+        if (hasClass) scales.y1 = {
+            position: 'right', beginAtZero: true, suggestedMax: classMax + 1,
+            grid: { display: false }, ticks: { precision: 0, stepSize: 1 },
+            title: { display: true, text: '학급수(개)', font: { size: 10 } }
+        };
+
         charts.push(new Chart(document.getElementById('gradeChart'), {
             type: 'bar',
-            data: {
-                labels,
-                datasets: [
-                    { label: '남', data: boys, backgroundColor: '#4e79a7', borderRadius: 4, stack: 'g' },
-                    { label: '여', data: girls, backgroundColor: '#f28e8c', borderRadius: 4, stack: 'g' }
-                ]
-            },
+            data: { labels, datasets },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
@@ -541,15 +574,14 @@
                         callbacks: {
                             footer: it => {
                                 const i = it[0].dataIndex;
-                                return '계 ' + ((boys[i] || 0) + (girls[i] || 0)) + '명';
+                                const cls = classCnt[labels[i]];
+                                return '계 ' + ((boys[i] || 0) + (girls[i] || 0)) + '명'
+                                    + (cls ? ' · ' + cls + '학급' : '');
                             }
                         }
                     }
                 },
-                scales: {
-                    x: { stacked: true, grid: { display: false } },
-                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
-                }
+                scales
             }
         }));
 
