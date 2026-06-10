@@ -115,6 +115,11 @@
         }
         #hint.show { display: block; }
 
+        /* 데이터 출처(하단 작게) */
+        .src-credit { position: fixed; bottom: 5px; right: 70px; z-index: 15; font-size: 10.5px;
+            color: rgba(31,41,55,0.6); background: rgba(255,255,255,0.7); padding: 2px 8px; border-radius: 6px;
+            pointer-events: none; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
         /* ── 현재위치 버튼 ── */
         .geo-btn {
             position: fixed; right: 16px; bottom: 16px; z-index: 20;
@@ -176,6 +181,7 @@
                 <a class="ymi active" href="/speetomap/"><span class="ico">🎟️</span>스피또 여지도</a>
                 <a class="ymi" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
                 <a class="ymi" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
+                <a class="ymi" href="/popmap/"><span class="ico">👶</span>인구 여지도</a>
             </div>
         </div>
         <div class="controls" id="chips">
@@ -198,6 +204,7 @@
 
     <div id="hint"></div>
     <button class="geo-btn" onclick="goCurrentPosition()" title="현재 위치">◎</button>
+    <div class="src-credit">데이터 · 동행복권 복권 판매점</div>
 
     <div id="spinner">
         <div class="loader"><div class="ring"></div><div>판매점 데이터를 불러오는 중…</div></div>

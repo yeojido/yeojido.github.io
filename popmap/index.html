@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>인구 여지도 — 출생연도별 행정동 인구</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root { --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --accent:#6d28d9; }
+        * { box-sizing: border-box; }
+        html, body { margin:0; padding:0; height:100%;
+            font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif; color:var(--ink); }
+        #map { position: fixed; top:0; left:0; width:100vw; height:100vh; }
+
+        /* 헤더 */
+        #header { position: fixed; top:0; left:0; right:0; z-index:30;
+            display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:10px 16px;
+            background:rgba(255,255,255,0.96); box-shadow:0 1px 8px rgba(0,0,0,0.08); backdrop-filter:blur(6px); }
+        #count { font-size:12.5px; color:var(--muted); font-weight:600; }
+
+        /* 여지도 전환 메뉴 */
+        .ymenu { position:relative; }
+        .ymenu-trigger { display:flex; align-items:center; gap:7px; cursor:pointer; background:none; border:none;
+            padding:2px 4px; font-family:inherit; font-size:18px; font-weight:800; letter-spacing:-0.5px; color:var(--ink); }
+        .ymenu-trigger .tk { font-size:17px; } .ymenu-trigger .caret { font-size:11px; color:var(--muted); }
+        .ymenu-pop { position:absolute; top:calc(100% + 9px); left:0; min-width:212px; background:#fff;
+            border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.16);
+            padding:6px; z-index:50; display:none; }
+        .ymenu-pop.open { display:block; }
+        .ymi { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:8px;
+            text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600; }
+        .ymi:hover { background:#f3f4f6; } .ymi.active { background:#f5f3ff; color:var(--accent); }
+        .ymi .ico { font-size:16px; width:20px; text-align:center; } .ymi-sep { height:1px; background:var(--line); margin:5px 6px; }
+
+        /* 컨트롤(연생 슬라이더 + 성별) */
+        #controls { position:fixed; top:60px; left:16px; z-index:25; width:300px; max-width:92vw;
+            background:rgba(255,255,255,0.97); border-radius:14px; box-shadow:0 2px 14px rgba(0,0,0,0.14); padding:14px 16px; }
+        #controls select { width:100%; font-size:13.5px; font-weight:700; padding:7px 9px; margin-bottom:11px;
+            border:1.5px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); outline:none; }
+        #controls select:focus { border-color:var(--accent); }
+        #controls .yhead { display:flex; align-items:baseline; gap:8px; }
+        #controls .ybig { font-size:24px; font-weight:800; letter-spacing:-0.5px; }
+        #controls .yage { font-size:12.5px; color:var(--muted); font-weight:600; }
+        #controls input[type=range] { width:100%; margin:10px 0 2px; accent-color:var(--accent); }
+        #controls .yends { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
+        .gtoggle { display:flex; gap:6px; margin-top:11px; }
+        .gbtn { flex:1; text-align:center; padding:6px 0; border-radius:8px; border:1.5px solid var(--line);
+            background:#fff; color:var(--muted); font-size:13px; font-weight:700; cursor:pointer; }
+        .gbtn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+        #metaNote { margin-top:11px; padding-top:10px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); line-height:1.6; }
+
+        /* 범례 */
+        #legend { position:fixed; left:16px; bottom:16px; z-index:20; background:rgba(255,255,255,0.96);
+            border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.12); padding:11px 13px; font-size:11.5px; }
+        #legend .bar { width:170px; height:12px; border-radius:3px; margin:6px 0 3px;
+            background:linear-gradient(90deg,#edf8b1,#1d4877 80%,#081d58); }
+        #legend .ends { display:flex; justify-content:space-between; color:var(--muted); }
+        #legend .ttl { font-weight:700; }
+
+        /* 상세 패널 */
+        #panel { position:fixed; top:0; right:0; z-index:40; width:360px; max-width:92vw; height:100%;
+            background:var(--bg); box-shadow:-4px 0 24px rgba(0,0,0,0.16); transform:translateX(105%);
+            transition:transform .28s cubic-bezier(.4,0,.2,1); overflow-y:auto; }
+        #panel.open { transform:translateX(0); }
+        .phead { position:sticky; top:0; z-index:2; padding:16px 18px 14px; color:#fff;
+            background:linear-gradient(135deg,#7c3aed,var(--accent)); }
+        .phead .close { position:absolute; top:12px; right:12px; cursor:pointer; width:30px; height:30px;
+            border-radius:50%; border:none; background:rgba(255,255,255,0.22); color:#fff; font-size:17px; }
+        .phead .gu { font-size:12px; opacity:.9; font-weight:600; }
+        .phead h2 { margin:3px 0 0; font-size:21px; font-weight:800; letter-spacing:-0.5px; }
+        .pbody { padding:14px 16px 40px; }
+        .pkpi { display:flex; gap:9px; margin-bottom:12px; }
+        .pkpi .b { flex:1; background:#fff; border:1px solid var(--line); border-radius:12px; padding:11px 12px; }
+        .pkpi .lab { font-size:11px; color:var(--muted); font-weight:600; }
+        .pkpi .val { font-size:21px; font-weight:800; margin-top:2px; }
+        .pkpi .val small { font-size:12px; color:var(--muted); font-weight:600; }
+        .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:13px 14px; }
+        .card h3 { margin:0 0 4px; font-size:13.5px; } .card .sub { font-size:11.5px; color:var(--muted); font-weight:500; }
+        .chart-wrap { position:relative; height:230px; margin-top:8px; }
+
+        /* 호버 툴팁 */
+        #tip { position:fixed; z-index:35; pointer-events:none; display:none; background:rgba(31,41,55,0.92);
+            color:#fff; font-size:12px; font-weight:600; padding:5px 9px; border-radius:7px; white-space:nowrap; }
+
+        /* 데이터 출처(하단 작게) */
+        .src-credit { position:fixed; bottom:5px; right:14px; z-index:15; font-size:10.5px;
+            color:rgba(31,41,55,0.6); background:rgba(255,255,255,0.7); padding:2px 8px; border-radius:6px;
+            pointer-events:none; max-width:70vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+        #spinner { position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+            background:rgba(255,255,255,0.85); font-weight:700; color:var(--muted); }
+        #spinner.hidden { display:none; }
+        .ring { width:38px; height:38px; border:4px solid var(--line); border-top-color:var(--accent);
+            border-radius:50%; animation:spin .9s linear infinite; } @keyframes spin { to { transform:rotate(360deg); } }
+
+        @media (max-width:640px) {
+            .ymenu-trigger .t { display:none; }
+            #controls { top:auto; bottom:84px; left:8px; right:8px; width:auto; }
+            #legend { display:none; } #panel { width:100%; max-width:100%; height:80%; top:auto; bottom:0;
+                border-radius:18px 18px 0 0; transform:translateY(105%); } #panel.open { transform:translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="header">
+        <div class="ymenu">
+            <button class="ymenu-trigger" onclick="toggleYmenu(event)">
+                <span class="tk">👶</span><span class="t">인구 여지도</span><span class="caret">▾</span>
+            </button>
+            <div class="ymenu-pop" id="ymenuPop">
+                <a class="ymi" href="/"><span class="ico">🏠</span>여지도 홈</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi" href="/speetomap/"><span class="ico">🎟️</span>스피또 여지도</a>
+                <a class="ymi" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
+                <a class="ymi" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
+                <a class="ymi active" href="/popmap/"><span class="ico">👶</span>인구 여지도</a>
+            </div>
+        </div>
+        <span id="count"></span>
+    </div>
+
+    <div id="controls">
+        <select id="regionSel"><option value="">전체 지역</option></select>
+        <div class="yhead">
+            <span class="ybig" id="yearLabel">–</span>
+            <span class="yage" id="ageLabel"></span>
+        </div>
+        <input type="range" id="yearSlider" min="0" max="0" step="1" value="0">
+        <div class="yends"><span id="yMin"></span><span id="yMax"></span></div>
+        <div class="gtoggle" id="gtoggle">
+            <span class="gbtn on" data-g="계">전체</span>
+            <span class="gbtn" data-g="남">남</span>
+            <span class="gbtn" data-g="여">여</span>
+        </div>
+        <div id="metaNote"></div>
+    </div>
+
+    <div id="legend">
+        <div class="ttl" id="legendTitle">인구수</div>
+        <div class="bar"></div>
+        <div class="ends"><span>0</span><span id="legendMax">–</span></div>
+    </div>
+
+    <div id="tip"></div>
+
+    <div id="panel">
+        <div class="phead" id="phead">
+            <button class="close" onclick="closePanel()">✕</button>
+            <div class="gu" id="pGu"></div>
+            <h2 id="pName"></h2>
+        </div>
+        <div class="pbody" id="pbody"></div>
+    </div>
+
+    <div class="src-credit">데이터 · 행정안전부 주민등록 인구통계 · 행정동 경계 vuski/admdongkor</div>
+
+    <div id="spinner"><div style="text-align:center"><div class="ring"></div><div style="margin-top:12px">인구 데이터를 불러오는 중…</div></div></div>
+
+    <script type="text/javascript"
+        src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
+    <script>
+    let map, geo = null, meta = null, years = [], curYear, gender = '계';
+    let activeRegion = '';       // '' = 전체, 아니면 특정 시/군/구
+    let featureByCode = {};      // code -> naver Data feature
+    let rawByCode = {};          // code -> properties(원본)
+    let panelCode = null, panelChart = null;
+
+    const LOW = [237, 248, 177], MID = [29, 72, 119], HIGH = [8, 29, 88];
+
+    window.navermap_authFailure = () => showErr('네이버 지도 인증 실패: 현재 주소가 등록돼 있어야 합니다.');
+
+    function initMap() {
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(37.394, 126.956), zoom: 13,
+            zoomControl: true, zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER },
+            mapDataControl: false, scaleControl: false
+        });
+        loadData();
+    }
+
+    function loadData() {
+        fetch('./population.geojson')
+            .then(r => { if (!r.ok) throw new Error('네트워크 오류'); return r.json(); })
+            .then(g => {
+                geo = g; meta = g.meta || {};
+                years = (meta['출생연도목록'] || []).map(Number).sort((a, b) => a - b);
+                g.features.forEach(f => { rawByCode[f.properties.code] = f.properties; });
+                setupControls();
+                drawData(g);
+                document.getElementById('spinner').classList.add('hidden');
+            })
+            .catch(e => { console.error(e); showErr('데이터를 불러오지 못했습니다.'); });
+    }
+
+    function setupControls() {
+        const sl = document.getElementById('yearSlider');
+        sl.min = 0; sl.max = years.length - 1; sl.value = years.length - 1;  // 최신 연생(가장 어림)
+        curYear = years[years.length - 1];
+        document.getElementById('yMin').textContent = years[0] + '년생';
+        document.getElementById('yMax').textContent = years[years.length - 1] + '년생';
+        sl.addEventListener('input', () => { curYear = years[+sl.value]; refresh(); });
+        document.getElementById('gtoggle').addEventListener('click', e => {
+            const b = e.target.closest('.gbtn'); if (!b) return;
+            gender = b.dataset.g;
+            [...document.querySelectorAll('.gbtn')].forEach(x => x.classList.toggle('on', x === b));
+            refresh();
+        });
+        // 지역 선택기
+        const rsel = document.getElementById('regionSel');
+        (meta['지역목록'] || []).forEach(r => {
+            const o = document.createElement('option'); o.value = r; o.textContent = r; rsel.appendChild(o);
+        });
+        rsel.addEventListener('change', () => {
+            activeRegion = rsel.value;
+            map.data.setStyle(styleFn);
+            fitToRegion(activeRegion);
+            updateCounts();
+            if (panelCode && rawByCode[panelCode].region !== activeRegion && activeRegion) closePanel();
+        });
+        const refY = meta['통계기준_연도'];
+        document.getElementById('metaNote').innerHTML =
+            `${(meta['지역목록'] || []).length}개 시/군/구 · ${meta['등록구분'] || ''}<br>` +
+            `통계기준 ${meta['통계기준'] || ''} · 수집 ${(meta['수집일시'] || '').slice(0, 10)}<br>` +
+            `※ ${refY}년 기준 연령 = ${refY} − 출생연도`;
+        updateYearLabel();
+    }
+
+    function isVisible(code) {
+        return !activeRegion || (rawByCode[code] && rawByCode[code].region === activeRegion);
+    }
+
+    // 보이는(선택 지역) feature 들의 경계로 지도를 맞춘다.
+    function fitToRegion(region) {
+        let minLa = 99, maxLa = -99, minLo = 999, maxLo = -999, n = 0;
+        for (const f of geo.features) {
+            if (region && f.properties.region !== region) continue;
+            const c = f.properties.center; if (!c) continue;
+            minLa = Math.min(minLa, c[0]); maxLa = Math.max(maxLa, c[0]);
+            minLo = Math.min(minLo, c[1]); maxLo = Math.max(maxLo, c[1]); n++;
+        }
+        if (!n) return;
+        const pad = 0.01;
+        map.fitBounds(new naver.maps.LatLngBounds(
+            new naver.maps.LatLng(minLa - pad, minLo - pad),
+            new naver.maps.LatLng(maxLa + pad, maxLo + pad)));
+    }
+
+    function updateCounts() {
+        const n = geo.features.filter(f => isVisible(f.properties.code)).length;
+        document.getElementById('count').textContent = `${n}개 행정동`;
+        document.getElementById('legendMax').textContent = curMax().toLocaleString() + '명';
+    }
+
+    function updateYearLabel() {
+        const refY = meta['통계기준_연도'];
+        document.getElementById('yearLabel').textContent = curYear + '년생';
+        document.getElementById('ageLabel').textContent =
+            refY ? `(${refY}년 기준 만 ${refY - curYear}세 전후)` : '';
+    }
+
+    function popOf(props, year, g) {
+        const y = (props.byYear || {})[String(year)];
+        return y ? (y[g] || 0) : 0;
+    }
+    function curMax() {
+        let m = 0;
+        for (const c in rawByCode) if (isVisible(c)) m = Math.max(m, popOf(rawByCode[c], curYear, gender));
+        return m || 1;
+    }
+    function lerp(a, b, t) { return a.map((x, i) => Math.round(x + (b[i] - x) * t)); }
+    function colorOf(v, max) {
+        if (!v) return '#eef0f3';
+        const t = Math.pow(v / max, 0.65);
+        const c = t < 0.5 ? lerp(LOW, MID, t / 0.5) : lerp(MID, HIGH, (t - 0.5) / 0.5);
+        return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
+
+    function drawData(g) {
+        map.data.addGeoJson({ type: 'FeatureCollection', features: g.features });
+        map.data.setStyle(styleFn);
+        map.data.addListener('click', e => openPanel(e.feature.getProperty('code')));
+        map.data.addListener('mouseover', e => {
+            map.data.overrideStyle(e.feature, { fillOpacity: 0.92, strokeWeight: 2.5 });
+            showTip(e);
+        });
+        map.data.addListener('mouseout', e => { map.data.revertStyle(); showTip(null); });
+        map.data.addListener('mousemove', e => showTip(e));
+        // code -> feature 매핑
+        map.data.forEach(f => { featureByCode[f.getProperty('code')] = f; });
+        updateCounts();
+        fitToRegion('');   // 처음엔 전체 지역에 맞춤
+    }
+
+    function styleFn(feature) {
+        const code = feature.getProperty('code');
+        if (!isVisible(code))   // 선택 지역이 아니면 숨김
+            return { fillOpacity: 0, strokeWeight: 0, strokeOpacity: 0, clickable: false };
+        const v = popOf({ byYear: feature.getProperty('byYear') }, curYear, gender);
+        return { fillColor: colorOf(v, curMax()), fillOpacity: 0.78,
+                 strokeColor: '#ffffff', strokeWeight: 1.4, clickable: true };
+    }
+
+    function refresh() {
+        updateYearLabel();
+        map.data.setStyle(styleFn);
+        document.getElementById('legendMax').textContent = curMax().toLocaleString() + '명';
+        if (panelCode) {        // 패널 열려 있으면 KPI 텍스트 + 차트 강조도 갱신
+            updatePanelKpis(panelCode);
+            renderPanelChart(panelCode);
+        }
+    }
+
+    function updatePanelKpis(code) {
+        const p = rawByCode[code];
+        const l1 = document.getElementById('pk1lab'), v1 = document.getElementById('pk1val');
+        const l2 = document.getElementById('pk2lab'), v2 = document.getElementById('pk2val');
+        if (!l1) return;
+        l1.textContent = `${curYear}년생 (${gender})`;
+        v1.textContent = popOf(p, curYear, gender).toLocaleString();
+        l2.textContent = `${years[0]}~${years[years.length - 1]}년생 합 (${gender})`;
+        v2.textContent = years.reduce((a, y) => a + popOf(p, y, gender), 0).toLocaleString();
+    }
+
+    // ── 호버 툴팁 ──
+    function showTip(e) {
+        const tip = document.getElementById('tip');
+        if (!e) { tip.style.display = 'none'; return; }
+        const p = e.feature.getProperties ? null : null;
+        const props = rawByCode[e.feature.getProperty('code')];
+        const v = popOf(props, curYear, gender);
+        tip.innerHTML = `${props.name} · ${curYear}년생 <b>${v.toLocaleString()}명</b>`;
+        tip.style.display = 'block';
+        const pt = e.pointerEvent || e.domEvent;
+        if (pt) { tip.style.left = (pt.clientX + 12) + 'px'; tip.style.top = (pt.clientY + 12) + 'px'; }
+    }
+
+    // ── 상세 패널 ──
+    function openPanel(code) {
+        panelCode = code;
+        const p = rawByCode[code];
+        document.getElementById('pGu').textContent = p.region || '';
+        document.getElementById('pName').textContent = p.name;
+        const refY = meta['통계기준_연도'];
+        const totalKids = years.reduce((a, y) => a + popOf(p, y, gender), 0);
+        let html = '<div class="pkpi">';
+        html += `<div class="b"><div class="lab" id="pk1lab">${curYear}년생 (${gender})</div>
+            <div class="val"><span id="pk1val">${popOf(p, curYear, gender).toLocaleString()}</span><small> 명</small></div></div>`;
+        html += `<div class="b"><div class="lab" id="pk2lab">${years[0]}~${years[years.length-1]}년생 합 (${gender})</div>
+            <div class="val"><span id="pk2val">${totalKids.toLocaleString()}</span><small> 명</small></div></div>`;
+        html += '</div>';
+        html += `<div class="card"><h3>출생연도별 인구 <span class="sub">${p.region||''} ${p.name} · ${gender}</span></h3>
+            <div class="chart-wrap"><canvas id="dongChart"></canvas></div></div>`;
+        document.getElementById('pbody').innerHTML = html;
+        document.getElementById('panel').classList.add('open');
+        renderPanelChart(code);
+    }
+
+    function renderPanelChart(code) {
+        const p = rawByCode[code];
+        if (!document.getElementById('dongChart')) return;
+        const refY = meta['통계기준_연도'];
+        const labels = years.map(y => y + '년생');
+        const data = years.map(y => popOf(p, y, gender));
+        const colors = years.map(y => y === curYear ? '#6d28d9' : '#c4b5fd');
+        if (panelChart) panelChart.destroy();
+        Chart.defaults.font.family = "'Malgun Gothic', sans-serif";
+        panelChart = new Chart(document.getElementById('dongChart'), {
+            type: 'bar',
+            data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 3 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: {
+                        title: it => it[0].label + (refY ? ` (${refY}년 ${refY - years[it[0].dataIndex]}세)` : ''),
+                        label: c => c.parsed.y.toLocaleString() + '명'
+                    } }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxRotation: 70, minRotation: 50, font: { size: 9 } } },
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                },
+                onClick: (ev, els) => { if (els.length) { const sl = document.getElementById('yearSlider');
+                    sl.value = els[0].index; curYear = years[els[0].index]; refresh(); } }
+            }
+        });
+    }
+
+    function closePanel() { document.getElementById('panel').classList.remove('open'); panelCode = null; }
+
+    // ── 메뉴 ──
+    function toggleYmenu(e) { e.stopPropagation(); document.getElementById('ymenuPop').classList.toggle('open'); }
+    document.addEventListener('click', () => { const p = document.getElementById('ymenuPop'); if (p) p.classList.remove('open'); });
+
+    function showErr(msg) {
+        document.getElementById('spinner').innerHTML =
+            `<div style="color:#dc2626;font-weight:700;text-align:center;max-width:360px;padding:20px">${msg}</div>`;
+        document.getElementById('spinner').classList.remove('hidden');
+    }
+    </script>
+</body>
+</html>
