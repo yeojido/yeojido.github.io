@@ -2,378 +2,428 @@
 <html lang="ko">
 <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>스피또 여지도 — 복권 판매점 지도</title>
+    <style>
+        :root {
+            --c-2000: #e74c3c;   /* 스피또2000 */
+            --c-1000: #3498db;   /* 스피또1000 */
+            --c-500:  #2ecc71;   /* 스피또500 */
+            --c-annuity: #f39c12;/* 연금복권 */
+            --ink: #1f2937;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+            color: var(--ink);
+        }
+        /* 네이버 지도는 컨테이너 position 을 relative 로 덮어써 inset:0 만으로는
+           높이가 0 으로 붕괴된다. 명시적 100vw/100vh 로 화면을 꽉 채운다. */
+        #map { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+
+        /* ── 헤더 ── */
+        #header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.96);
+            box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+            backdrop-filter: blur(6px);
+        }
+        #header h1 {
+            font-size: 18px; margin: 0; font-weight: 800; letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 7px; white-space: nowrap;
+        }
+        #header h1 .tk {
+            font-size: 17px; line-height: 1;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.15));
+        }
+        .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 11px; border-radius: 999px; cursor: pointer;
+            font-size: 12.5px; font-weight: 700; border: 1.5px solid var(--line);
+            background: #fff; color: var(--muted); user-select: none;
+            transition: all .15s;
+        }
+        .chip .sw { width: 9px; height: 9px; border-radius: 50%; }
+        /* 꺼진(숨김) 칩도 해당 색 점을 보여 마커 점 색과 대응시킨다 */
+        .chip[data-g="speeto2000"] .sw { background: var(--c-2000); }
+        .chip[data-g="speeto1000"] .sw { background: var(--c-1000); }
+        .chip[data-g="speeto500"]  .sw { background: var(--c-500); }
+        .chip[data-g="annuity"]    .sw { background: var(--c-annuity); }
+        .chip { opacity: 0.5; }                 /* 꺼진 상태: 흐리게 */
+        .chip.on { opacity: 1; color: #fff; }   /* 켜진 상태: 색 채움 */
+        .chip.on[data-g="speeto2000"] { background: var(--c-2000); border-color: var(--c-2000); }
+        .chip.on[data-g="speeto1000"] { background: var(--c-1000); border-color: var(--c-1000); }
+        .chip.on[data-g="speeto500"]  { background: var(--c-500);  border-color: var(--c-500); }
+        .chip.on[data-g="annuity"]    { background: var(--c-annuity); border-color: var(--c-annuity); }
+        .chip.on .sw { background: #fff !important; }
+        #count { font-size: 12.5px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+
+        /* ── 범례 ── */
+        #legend {
+            position: fixed; left: 16px; bottom: 16px; z-index: 20;
+            background: rgba(255,255,255,0.96); border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12); padding: 11px 13px;
+            font-size: 12px; line-height: 1.75;
+        }
+        #legend b { font-size: 12.5px; }
+        #legend .row { display: flex; align-items: center; gap: 7px; }
+        #legend .sw { width: 11px; height: 11px; border-radius: 50%; }
+        #legend .credit {
+            margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--line);
+            font-size: 10.5px; color: var(--muted);
+        }
+        #legend .credit a { color: var(--muted); }
+
+        /* ── 줌 힌트(가운데 알약) ── */
+        #hint {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            z-index: 25; display: none;
+            background: rgba(31,41,55,0.88); color: #fff; font-weight: 600;
+            padding: 11px 18px; border-radius: 999px; font-size: 13.5px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25); pointer-events: none;
+            text-align: center;
+        }
+        #hint.show { display: block; }
+
+        /* ── 현재위치 버튼 ── */
+        .geo-btn {
+            position: fixed; right: 16px; bottom: 16px; z-index: 20;
+            width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
+            background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+            font-size: 20px; color: var(--c-1000);
+        }
+
+        /* ── 스피너 ── */
+        #spinner {
+            position: fixed; inset: 0; z-index: 60; display: flex;
+            align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.85); font-weight: 700; color: var(--muted);
+        }
+        #spinner.hidden { display: none; }
+        .loader { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .loader .ring {
+            width: 38px; height: 38px; border: 4px solid var(--line);
+            border-top-color: var(--c-2000); border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── InfoWindow 카드 ── */
+        .iw {
+            min-width: 200px; max-width: 250px; padding: 13px 14px 12px;
+            font-family: inherit;
+        }
+        .iw .name { font-size: 15px; font-weight: 800; letter-spacing: -0.4px; }
+        .iw .addr { font-size: 12px; color: var(--muted); margin: 4px 0 9px; line-height: 1.45; }
+        .iw .badges { display: flex; flex-wrap: wrap; gap: 5px; }
+        .iw .badge {
+            font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; color: #fff;
+        }
+        .iw .badge.b2000 { background: var(--c-2000); }
+        .iw .badge.b1000 { background: var(--c-1000); }
+        .iw .badge.b500  { background: var(--c-500); }
+        .iw .badge.bann  { background: var(--c-annuity); }
+        .iw .none { font-size: 11.5px; color: var(--muted); }
+        .iw .date { font-size: 10.5px; color: #9ca3af; margin-top: 8px; }
+
+        @media (max-width: 640px) {
+            #header h1 span.t { display: none; }
+            #legend { padding: 9px 11px; }
+        }
+    </style>
 </head>
 <body>
-    <style>
-    html {
-        -ms-content-zooming: none;
-        -ms-touch-action: pan-x pan-y;
-    }
-    body {
-        margin: 0;
-        padding: 0;
-    }
-    #wrap {
-        height: 100vh;
-    }
-    #header {
-        overflow: hidden;
-        position: fixed;
-        top: 0;
-        width: 100%;
-        height: 75px;
-        margin: 0 auto;
-        background: #fff;
-        border-radius: 5px;
-        z-index: 101;
-    }
-    .inner_header h1 {
-        padding-left: 15px;
-    }
-    #container {
-        height: 100%;
-    }
-    .api_position {
-        width:100%;
-        min-height: 500px;
-        height: 100%;
-    }
-    #footer {
-        overflow: hidden;
-        position: fixed;
-        bottom: 0;
-        padding-top: 10px;
-        padding-left: 10px;
-        height: 75px;
-        width: 100%;
-        z-index: 100;
-        background-color: #fff;
-        font-size: 15px;
-    }
-    a {
-        color: black;
-    }
-    a:link {
-        color: black;
-    }
-    .float{
-        position:fixed;
-        width:60px;
-        height:60px;
-        bottom:40px;
-        right:40px;
-        background-color:#0C9;
-        color:#FFF;
-        border-radius:50px;
-        text-align:center;
-        box-shadow: 2px 2px 3px #999;
-        font-size: 40px;
-        z-index: 101;
-    }
-    .bar-img {
-        max-width: 225px;
-        max-height: 275px;
-    }
-    .infowindow {
-        width: 225px;
-        text-align: center;
-        padding: 5px;
-    }
-    .upper-float {
-            position: fixed;
-            width: 60px;
-            height: 60px;
-            top: 40px;
-            right: 40px;
-            background-color: rgb(57, 155, 235);
-            color: #FFF;
-            border-radius: 50px;
-            text-align: center;
-            box-shadow: 2px 2px 3px #999;
-            font-size: 13px;
-            z-index: 102;
-        }
-</style>
-    <div id="spinner" class="spinner-container">
-        <div class="loader">
-            Loading...
+    <div id="map"></div>
+
+    <div id="header">
+        <h1><span class="tk">🎟️</span><span class="t">스피또 여지도</span></h1>
+        <div class="controls" id="chips">
+            <span class="chip on" data-g="speeto2000"><span class="sw"></span>스피또2000</span>
+            <span class="chip on" data-g="speeto1000"><span class="sw"></span>스피또1000</span>
+            <span class="chip on" data-g="speeto500"><span class="sw"></span>스피또500</span>
+            <span class="chip on" data-g="annuity"><span class="sw"></span>연금복권</span>
+            <span id="count"></span>
         </div>
     </div>
-    <div id="wrap">
-        <button onclick="updateMarkers(map, markers);" class="upper-float">Refresh</button>
-        <button onclick="setCurrentPosition();" class="float">+</button>
-        <!-- header -->
-        <div id="header">
-            <div class="inner_header">
-                <h1>스피또여지도</h1>
-            </div>
-        </div>
-        <!-- //header -->
-        <!-- container -->
-        <div id="container">
-            <div id="map" class="api_position"></div>
-        </div>
-        <!-- footer -->
-        <div id="footer">
-            <div class="inner_footer">
-                <div class="footer_copright">
-                    Author: <a
-                        href="https://eine.tistory.com/entry/%ED%8F%89%ED%96%89%EB%B4%89-%EB%B0%8F-%EC%B2%A0%EB%B4%89-%EC%A7%80%EB%8F%84-%EA%B0%9C%EB%B0%9C%EA%B8%B0"
-                        target="_blank">Einstrasse</a> / Issue Report: <a
-                        href="https://github.com/Einstrasse/einstrasse.github.io/issues">Click Here!</a>
-                </div>
-            </div>
-        </div>
-        <!-- //footer -->
+
+    <div id="legend">
+        <b>마커 안 점 = 취급 종류</b>
+        <div class="row"><span class="sw" style="background:var(--c-2000)"></span> 스피또2000</div>
+        <div class="row"><span class="sw" style="background:var(--c-1000)"></span> 스피또1000</div>
+        <div class="row"><span class="sw" style="background:var(--c-500)"></span> 스피또500</div>
+        <div class="row"><span class="sw" style="background:var(--c-annuity)"></span> 연금복권</div>
+        <div class="credit">Author: <a href="https://eine.tistory.com/entry/%ED%8F%89%ED%96%89%EB%B4%89-%EB%B0%8F-%EC%B2%A0%EB%B4%89-%EC%A7%80%EB%8F%84-%EA%B0%9C%EB%B0%9C%EA%B8%B0" target="_blank" rel="noopener">Einstrasse</a></div>
     </div>
 
-    <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
+    <div id="hint"></div>
+    <button class="geo-btn" onclick="goCurrentPosition()" title="현재 위치">◎</button>
 
+    <div id="spinner">
+        <div class="loader"><div class="ring"></div><div>판매점 데이터를 불러오는 중…</div></div>
+    </div>
+
+    <script type="text/javascript"
+        src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
     <script>
-        // Naver Map API 인증 실패 처리
-        window.navermap_authFailure = function() {
-            console.error('Naver Map API 인증 실패');
-            alert('지도를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.');
-            // 스피너 숨기기
-            let spinner = document.getElementById('spinner');
-            if (spinner) {
-                spinner.style.visibility = 'hidden';
-            }
-        };
+    // 판매점은 여러 종류를 동시에 취급한다. 마커 안에 취급 종류만큼 색 점을 찍고,
+    // 칩으로 종류별 표시/숨김을 토글한다(기본 모두 켜짐).
+    const TYPES = [
+        { key: "speeto2000", color: "#e74c3c", label: "스피또2000" },
+        { key: "speeto1000", color: "#3498db", label: "스피또1000" },
+        { key: "speeto500",  color: "#2ecc71", label: "스피또500" },
+        { key: "annuity",    color: "#f39c12", label: "연금복권" },
+    ];
+    const DETAIL_ZOOM = 14;     // 이 줌 이상이면 개별 마커, 미만이면 클러스터(묶음)
+    const MAX_RENDER = 1500;    // 개별 모드에서 후보가 이보다 많으면 확대 유도
 
-        let HOME_PATH = window.HOME_PATH || '.';
+    let map, stores = [], infoWindow, curPosMarker = null;
+    let activeTypes = new Set(TYPES.map(t => t.key));  // 켜진 종류. 칩으로 끄면 숨김
+    let clusterMarkers = [];    // 클러스터(묶음) 마커 풀
+    let idleTimer = null;
 
-        let map, markers = [], infoWindows = [], openedInfoWindow = null;
-        let curPosInfoWindow;
-        let rawMarkerData = [];
+    window.navermap_authFailure = function () { showMapError(); };
 
-        // Naver Map API 로드 완료 후 호출되는 콜백 함수
-        function initMap() {
-            try {
-                map = new naver.maps.Map('map', {
-                    center: new naver.maps.LatLng(37.48, 127.035),
-                    zoom: 15,
-                    zoomControl: true,
-                    zoomControlOptions: {
-                        position: naver.maps.Position.TOP_RIGHT
-                    }
+    function initMap() {
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(37.4979, 127.0276),  // 강남 일대
+            zoom: 15,
+            zoomControl: true,
+            zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
+        });
+        infoWindow = new naver.maps.InfoWindow({ borderWidth: 0, disableAnchor: false,
+            backgroundColor: '#fff', anchorSize: new naver.maps.Size(12, 12) });
+
+        naver.maps.Event.addListener(map, 'click', () => infoWindow.close());
+        // 지도 이동/줌이 끝날 때마다(디바운스) 뷰포트 마커를 갱신 = 레이지 로딩
+        naver.maps.Event.addListener(map, 'idle', scheduleRefresh);
+
+        // 타일 미로딩(도메인 미등록 등) 감지 → 안내
+        let tilesLoaded = false;
+        naver.maps.Event.addListener(map, 'tilesloaded', () => { tilesLoaded = true; });
+        setTimeout(() => { if (!tilesLoaded) showMapError(); }, 4500);
+
+        loadData();
+    }
+
+    function loadData() {
+        fetch('./speeto-map.json')
+            .then(r => { if (!r.ok) throw new Error('네트워크 오류'); return r.json(); })
+            .then(data => {
+                stores = data.filter(s => Array.isArray(s.pos)).map(s => {
+                    s.position = new naver.maps.LatLng(s.pos[0], s.pos[1]);
+                    s.marker = null;
+                    return s;
                 });
-
-                curPosInfoWindow = new naver.maps.InfoWindow();
-
-                // 이벤트 리스너 설정
-                setupEventListeners();
-
-                // 현재 위치로 이동
-                setCurrentPosition();
-
-                // 마커 데이터 로드
-                loadMarkerData();
-
-            } catch (error) {
-                console.error('지도 초기화 실패:', error);
-                alert('지도를 초기화하는 중 오류가 발생했습니다.');
-                let spinner = document.getElementById('spinner');
-                if (spinner) {
-                    spinner.style.visibility = 'hidden';
-                }
-            }
-        }
-
-        // 마커 데이터 로드
-        function loadMarkerData() {
-            console.log("마커 데이터 로드 시작");
-            let spinner = document.getElementById('spinner');
-            spinner.style.visibility = 'visible';
-
-            fetch("./speeto-map.json")
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('네트워크 응답이 올바르지 않습니다.');
-                    }
-                    return response.json();
-                })
-                .then(MarkerData => {
-                    rawMarkerData = MarkerData.map(item => {
-                        item.position = new naver.maps.LatLng(item.pos[0], item.pos[1]);
-                        return item;
-                    });
-
-                    console.log(`${rawMarkerData.length}개의 마커 데이터 로드 완료`);
-                    spinner.style.visibility = 'hidden';
-                    
-                    // 초기 마커 업데이트
-                    setTimeout(() => {
-                        updateMarkers(map, markers);
-                    }, 0);
-                })
-                .catch(error => {
-                    console.error('마커 데이터 로드 실패:', error);
-                    alert('판매점 데이터를 불러오는데 실패했습니다.');
-                    spinner.style.visibility = 'hidden';
-                });
-        }
-
-        // 이벤트 리스너 설정
-        function setupEventListeners() {
-            // 지도 클릭 시 열린 InfoWindow 닫기
-            naver.maps.Event.addListener(map, 'click', function() {
-                curPosInfoWindow.close();
-                if (openedInfoWindow && openedInfoWindow.getMap()) {
-                    openedInfoWindow.close();
-                }
+                document.getElementById('spinner').classList.add('hidden');
+                refresh();
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('spinner').innerHTML =
+                    '<div style="color:#e74c3c;font-weight:700">데이터를 불러오지 못했습니다.</div>';
             });
+    }
 
-            // 지도 이동 완료 시 마커 업데이트 (선택적 - 현재는 수동 refresh 사용)
-            // naver.maps.Event.addListener(map, 'idle', function() {
-            //     updateMarkers(map, markers);
-            // });
+    // 켜진 종류 중 하나라도 취급하면 마커를 표시(OR)
+    function passesFilter(s) {
+        return TYPES.some(t => activeTypes.has(t.key) && s[t.key] === 'Y');
+    }
+
+    // 마커 아이콘: 흰 알약 안에 '켜진 종류 ∩ 취급 종류'를 색 점으로 나열
+    function markerIcon(s) {
+        const dots = TYPES.filter(t => activeTypes.has(t.key) && s[t.key] === 'Y');
+        const D = 8, GAP = 3, PAD = 4, BORD = 2;
+        const innerW = Math.max(D, dots.length * D + Math.max(0, dots.length - 1) * GAP);
+        const W = innerW + PAD * 2 + BORD * 2;
+        const H = D + PAD * 2 + BORD * 2;
+        const inner = dots.map(t =>
+            `<span style="width:${D}px;height:${D}px;border-radius:50%;background:${t.color}"></span>`).join('');
+        const content =
+            `<div style="display:inline-flex;align-items:center;gap:${GAP}px;padding:${PAD}px;
+                background:#fff;border:${BORD}px solid #fff;border-radius:999px;box-sizing:border-box;
+                box-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:pointer">${inner}</div>`;
+        return { content, anchor: new naver.maps.Point(W / 2, H / 2) };
+    }
+
+    function createMarker(s) {
+        const marker = new naver.maps.Marker({
+            position: s.position, title: s.title, icon: markerIcon(s)
+        });
+        naver.maps.Event.addListener(marker, 'click', () => openInfo(s, marker));
+        s.marker = marker;
+    }
+
+    // 칩(필터) 변경 시 이미 만든 마커들의 점 구성을 갱신
+    function updateAllIcons() {
+        for (const s of stores) if (s.marker) s.marker.setIcon(markerIcon(s));
+    }
+
+    function badge(cls, label) { return `<span class="badge ${cls}">${label}</span>`; }
+
+    function openInfo(s, marker) {
+        let badges = '';
+        if (s.speeto2000 === 'Y') badges += badge('b2000', '스피또2000');
+        if (s.speeto1000 === 'Y') badges += badge('b1000', '스피또1000');
+        if (s.speeto500 === 'Y')  badges += badge('b500',  '스피또500');
+        if (s.annuity === 'Y')    badges += badge('bann',  '연금복권');
+        if (!badges) badges = '<span class="none">취급 정보 없음</span>';
+
+        infoWindow.setContent(
+            `<div class="iw">
+                <div class="name">${s.title || ''}</div>
+                <div class="addr">${s.addr || ''}</div>
+                <div class="badges">${badges}</div>
+                ${s.date ? `<div class="date">확인일: ${s.date}</div>` : ''}
+            </div>`);
+        infoWindow.open(map, marker);
+    }
+
+    function scheduleRefresh() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(refresh, 120);
+    }
+
+    // 줌에 따라 개별 마커(레이지) 또는 클러스터(묶음)로 표시
+    function refresh() {
+        if (!map || !stores.length) return;
+        const zoom = map.getZoom();
+        const bounds = map.getBounds();
+        if (zoom >= DETAIL_ZOOM) {
+            clearClusters();
+            showIndividual(bounds);
+        } else {
+            hideIndividual();
+            showClusters(bounds, zoom);
         }
+    }
 
-        function onSuccessGeolocation(position) {
-            let location = new naver.maps.LatLng(position.coords.latitude,
-                position.coords.longitude);
-            map.setCenter(location); // 얻은 좌표를 지도의 중심으로 설정합니다.
-            //map.setZoom(15); // 지도의 줌 레벨을 변경합니다.
-            if (curPosInfoWindow.getMap()) {
-                curPosInfoWindow.close();
-            }
-            curPosInfoWindow.setContent(`<div style="padding:10px;"><b>현재 위치</b><br>${location.toString()}</div>`);
-
-            curPosInfoWindow.open(map, location);
-            console.log('Coordinates: ' + location.toString());
+    // ── 개별 마커(뷰포트 안만 레이지 생성) ──
+    function showIndividual(bounds) {
+        const inView = [];
+        for (const s of stores) {
+            const ok = passesFilter(s) && bounds.hasLatLng(s.position);
+            if (ok) inView.push(s);
+            else if (s.marker) s.marker.setMap(null);
         }
-
-        function onErrorGeolocation() {
-            // let center = map.getCenter();
-
-            // infowindow.setContent('<div style="padding:20px;">' +
-            //     '<h5 style="margin-bottom:5px;color:#f00;">Geolocation failed!</h5>'+ "latitude: "+ center.lat() +"<br />longitude: "+ center.lng() +'</div>');
-
-            // infowindow.open(map, center);
+        if (inView.length > MAX_RENDER) {
+            for (const s of inView) if (s.marker) s.marker.setMap(null);
+            setHint(`이 영역에 ${inView.length.toLocaleString()}곳 — 더 확대해 보세요`);
+            setCount(`${inView.length.toLocaleString()}곳 (확대 필요)`);
+            return;
         }
+        clearHint();
+        for (const s of inView) {
+            if (!s.marker) createMarker(s);
+            s.marker.setMap(map);
+        }
+        setCount(`이 화면 ${inView.length.toLocaleString()}곳 표시`);
+    }
 
-        let setCurrentPosition = function () {
-            if (navigator.geolocation) {
-                /**
-                 * navigator.geolocation 은 Chrome 50 버젼 이후로 HTTP 환경에서 사용이 Deprecate 되어 HTTPS 환경에서만 사용 가능 합니다.
-                 * http://localhost 에서는 사용이 가능하며, 테스트 목적으로, Chrome 의 바로가기를 만들어서 아래와 같이 설정하면 접속은 가능합니다.
-                 * chrome.exe --unsafely-treat-insecure-origin-as-secure="http://example.com"
-                 */
-                navigator.geolocation.getCurrentPosition(onSuccessGeolocation, onErrorGeolocation);
-            } else {
-                console.log("Geolocation이 지원되지 않습니다.");
-                alert("현재 위치를 가져올 수 없습니다.");
-            }
-        };
+    function hideIndividual() {
+        for (const s of stores) if (s.marker && s.marker.getMap()) s.marker.setMap(null);
+    }
 
-        // 마커 생성 함수
-        function processMarker(data, markers, infoWindows) {
-            let marker = new naver.maps.Marker({
-                map: map,
-                position: data.position,
-                title: data.title,
-                zIndex: 100
+    // ── 클러스터(격자 묶음) ──
+    function showClusters(bounds, zoom) {
+        clearHint();
+        clearClusters();
+        // 화면 픽셀 기준 약 75px 크기의 격자로 묶는다(줌이 작을수록 격자 폭이 커짐).
+        const cell = (360 / (256 * Math.pow(2, zoom))) * 75;  // 격자 한 칸(경도 deg)
+        const buckets = new Map();
+        for (const s of stores) {
+            if (!passesFilter(s) || !bounds.hasLatLng(s.position)) continue;
+            const key = Math.floor(s.pos[1] / cell) + '_' + Math.floor(s.pos[0] / cell);
+            let b = buckets.get(key);
+            if (!b) { b = { sumLat: 0, sumLng: 0, n: 0 }; buckets.set(key, b); }
+            b.sumLat += s.pos[0]; b.sumLng += s.pos[1]; b.n++;
+        }
+        let total = 0;
+        for (const b of buckets.values()) {
+            total += b.n;
+            clusterMarkers.push(makeCluster(b.sumLat / b.n, b.sumLng / b.n, b.n, zoom));
+        }
+        setCount(total ? `${total.toLocaleString()}곳 · ${buckets.size}개 지역묶음`
+                       : '이 영역에 판매점 없음');
+    }
+
+    function makeCluster(lat, lng, count, zoom) {
+        const r = Math.round(Math.min(34, 16 + Math.sqrt(count) * 2.0));
+        const d = r * 2;
+        const fs = count >= 1000 ? 12 : count >= 100 ? 13 : 14;
+        const label = count >= 1000 ? (count / 1000).toFixed(1) + 'k' : count;
+        const content =
+            `<div style="width:${d}px;height:${d}px;border-radius:50%;box-sizing:border-box;
+                background:rgba(37,99,235,0.85);border:2.5px solid #fff;
+                box-shadow:0 2px 7px rgba(0,0,0,0.35);color:#fff;font-weight:800;
+                font-size:${fs}px;display:flex;align-items:center;justify-content:center;
+                cursor:pointer">${label}</div>`;
+        const m = new naver.maps.Marker({
+            position: new naver.maps.LatLng(lat, lng), map, zIndex: 200,
+            icon: { content, anchor: new naver.maps.Point(r, r) }
+        });
+        naver.maps.Event.addListener(m, 'click', () => {
+            const target = Math.min(zoom + 3, DETAIL_ZOOM + 1);
+            if (map.morph) map.morph(new naver.maps.LatLng(lat, lng), target);
+            else { map.setCenter(new naver.maps.LatLng(lat, lng)); map.setZoom(target); }
+        });
+        return m;
+    }
+
+    function clearClusters() {
+        for (const m of clusterMarkers) m.setMap(null);
+        clusterMarkers = [];
+    }
+
+    function setCount(t) { document.getElementById('count').textContent = t; }
+    function setHint(t) { const h = document.getElementById('hint'); h.textContent = t; h.classList.add('show'); }
+    function clearHint() { document.getElementById('hint').classList.remove('show'); }
+
+    // ── 종류 칩(표시/숨김 토글, 기본 모두 켜짐) ──
+    document.getElementById('chips').addEventListener('click', e => {
+        const chip = e.target.closest('.chip');
+        if (!chip) return;
+        const g = chip.dataset.g;
+        if (activeTypes.has(g)) { activeTypes.delete(g); chip.classList.remove('on'); }
+        else { activeTypes.add(g); chip.classList.add('on'); }
+        infoWindow.close();
+        updateAllIcons();   // 켜진 종류에 맞춰 마커 점 구성 갱신
+        refresh();
+    });
+
+    // ── 현재 위치 ──
+    function goCurrentPosition() {
+        if (!navigator.geolocation) return alert('현재 위치를 사용할 수 없습니다.');
+        navigator.geolocation.getCurrentPosition(p => {
+            const loc = new naver.maps.LatLng(p.coords.latitude, p.coords.longitude);
+            map.setZoom(15); map.setCenter(loc);
+            if (curPosMarker) curPosMarker.setMap(null);
+            curPosMarker = new naver.maps.Marker({
+                position: loc, map, zIndex: 1000,
+                icon: { content: '<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px #2563eb"></div>',
+                        anchor: new naver.maps.Point(8, 8) }
             });
-            let sell_items = [];
-            if (data.speeto500 === "Y") sell_items.push("<li>스피또500</li>");
-            if (data.speeto1000 === "Y") sell_items.push("<li>스피또1000</li>");
-            if (data.speeto2000 === "Y") sell_items.push("<li>스피또2000</li>");
-            if (data.annuity === "Y") sell_items.push("<li>연금복권</li>");
-            let infoWindow = new naver.maps.InfoWindow({
-                content:
-                    `<div class="infowindow">` +
-                    `<b>${data.title}</b>` +
-                    `<p>주소: ${data.addr}</p>` +
-                    `<ul>${sell_items.join("")}</ul>` +
-                    `<p style="font-size:11px;color:#888;">확인일: ${data.date || '미상'}</p>` +
-                    `</div>`
-            });
+        }, () => alert('현재 위치를 가져올 수 없습니다.'));
+    }
 
-            let retIndex = markers.length;
-            markers.push(marker);
-            infoWindows.push(infoWindow);
-            return retIndex;
-        }
-
-        // 마커 업데이트 함수 (최적화된 버전)
-        function updateMarkers(map, markers) {
-            if (!map || !rawMarkerData) return;
-
-            let spinner = document.getElementById('spinner');
-            spinner.style.visibility = 'visible';
-            console.log("마커 업데이트 시작", spinner.style.visibility);
-            
-            setTimeout(() => {
-                let ts0 = new Date().getTime();
-
-                let mapBounds = map.getBounds();
-    
-                // 현재 뷰포트에 있는 미처리 마커 처리
-                for (let item of rawMarkerData) {
-                    if (item.processed) continue;
-                    if (mapBounds.hasLatLng(item.position)) {
-                        let markerIndex = processMarker(item, markers, infoWindows);
-                        item.processed = true;
-                        naver.maps.Event.addListener(markers[markerIndex], 'click', getClickHandler(markerIndex));
-                    }
-                }
-    
-                let ts1 = new Date().getTime();
-                console.log(`마커 전처리 완료: ${ts1-ts0}ms / 전체 ${rawMarkerData.length}개`);
-    
-                // 처리된 마커 제거
-                rawMarkerData = rawMarkerData.filter(item => !item.processed);
-                
-                let ts2 = new Date().getTime();
-                console.log(`미처리 마커 필터링 완료: ${ts2-ts1}ms / 남은 ${rawMarkerData.length}개`);
-    
-                // 현재 뷰포트에 맞게 마커 표시/숨김
-                for (let i = 0; i < markers.length; i++) {
-                    let marker = markers[i];
-                    let position = marker.getPosition();
-                    
-                    if (mapBounds.hasLatLng(position)) {
-                        showMarker(map, marker);
-                    } else {
-                        hideMarker(map, marker);
-                    }
-                }
-
-                spinner.style.visibility = 'hidden';
-                let ts3 = new Date().getTime();
-                console.log(`마커 표시/숨김 완료: ${ts3-ts2}ms / 표시된 마커 ${markers.length}개`);
-            }, 1);
-        }
-
-        function showMarker(map, marker) {
-            if (marker.setMap()) return;
-            marker.setMap(map);
-        }
-
-        function hideMarker(map, marker) {
-            if (!marker.setMap()) return;
-            marker.setMap(null);
-        }
-
-        // 해당 마커의 인덱스를 seq라는 클로저 변수로 저장하는 이벤트 핸들러를 반환합니다.
-        function getClickHandler(seq) {
-            return function (e) {
-                let marker = markers[seq],
-                    infoWindow = infoWindows[seq];
-
-                if (infoWindow.getMap()) {
-                    infoWindow.close();
-                } else {
-                    openedInfoWindow = infoWindow;
-                    infoWindow.open(map, marker);
-                }
-            }
-        }
-
+    function showMapError() {
+        if (document.getElementById('mapError')) return;
+        const sp = document.getElementById('spinner');
+        if (sp) sp.classList.add('hidden');
+        const div = document.createElement('div');
+        div.id = 'mapError';
+        div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:50;max-width:420px;background:#fff;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.2);padding:22px 24px;text-align:center';
+        div.innerHTML = `<div style="font-size:18px;font-weight:800;margin-bottom:8px">🗺️ 지도를 표시할 수 없습니다</div>
+            <p style="font-size:13px;color:#6b7280;line-height:1.6;margin:0">네이버 지도 API가 현재 주소에서 인증되지 않았습니다.<br>
+            아래 주소를 네이버 클라우드 플랫폼 <b>Maps ‘Web 서비스 URL’</b>에 등록하면 표시됩니다.</p>
+            <code style="display:inline-block;margin-top:10px;padding:6px 10px;background:#f3f4f6;border-radius:6px;font-size:12px">${location.origin}</code>`;
+        document.body.appendChild(div);
+    }
     </script>
-    <!-- <script type="text/javascript" src="https://wcs.naver.net/wcslog.js"></script> -->
-
-
-        
 </body>
+</html>
