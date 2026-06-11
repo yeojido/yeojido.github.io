@@ -123,10 +123,11 @@
         .panel-head.중 { background: linear-gradient(135deg, #2576c0, var(--c-mid)); }
         .panel-head.고 { background: linear-gradient(135deg, #c0392b, var(--c-high)); }
         .panel-head .close {
-            position: absolute; top: 12px; right: 12px; cursor: pointer;
+            position: absolute; top: 12px; right: 12px; z-index: 5; cursor: pointer;
             width: 30px; height: 30px; border-radius: 50%; border: none;
             background: rgba(255,255,255,0.22); color: #fff; font-size: 17px; line-height: 1;
         }
+        .panel-head .badges, .panel-head h2, .panel-head .addr { padding-right: 34px; }
         .panel-head .badges { display: flex; gap: 6px; margin-bottom: 8px; }
         .panel-head .badge {
             font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
@@ -219,6 +220,7 @@
                 <a class="ymi active" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
                 <a class="ymi" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
                 <a class="ymi" href="/popmap/"><span class="ico">👶</span>인구 여지도</a>
+                <a class="ymi" href="/foreignmap/"><span class="ico">🌏</span>외국인 여지도</a>
             </div>
         </div>
         <div class="controls">

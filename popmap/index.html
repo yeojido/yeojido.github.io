@@ -47,6 +47,9 @@
         .gbtn { flex:1; text-align:center; padding:6px 0; border-radius:8px; border:1.5px solid var(--line);
             background:#fff; color:var(--muted); font-size:13px; font-weight:700; cursor:pointer; }
         .gbtn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+        .ov-btn { width:100%; margin-top:9px; padding:8px 0; border-radius:9px; border:1.5px solid var(--line);
+            background:#fff; color:var(--muted); font-size:13px; font-weight:700; cursor:pointer; }
+        .ov-btn.on { background:#0e7490; border-color:#0e7490; color:#fff; }
         #metaNote { margin-top:11px; padding-top:10px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); line-height:1.6; }
 
         /* 범례 */
@@ -64,7 +67,8 @@
         #panel.open { transform:translateX(0); }
         .phead { position:sticky; top:0; z-index:2; padding:16px 18px 14px; color:#fff;
             background:linear-gradient(135deg,#7c3aed,var(--accent)); }
-        .phead .close { position:absolute; top:12px; right:12px; cursor:pointer; width:30px; height:30px;
+        .phead .gu, .phead h2 { padding-right:34px; }   /* X 버튼과 안 겹치게 */
+        .phead .close { position:absolute; top:12px; right:12px; z-index:5; cursor:pointer; width:30px; height:30px;
             border-radius:50%; border:none; background:rgba(255,255,255,0.22); color:#fff; font-size:17px; }
         .phead .gu { font-size:12px; opacity:.9; font-weight:600; }
         .phead h2 { margin:3px 0 0; font-size:21px; font-weight:800; letter-spacing:-0.5px; }
@@ -116,6 +120,7 @@
                 <a class="ymi" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
                 <a class="ymi" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
                 <a class="ymi active" href="/popmap/"><span class="ico">👶</span>인구 여지도</a>
+                <a class="ymi" href="/foreignmap/"><span class="ico">🌏</span>외국인 여지도</a>
             </div>
         </div>
         <span id="count"></span>
@@ -134,6 +139,7 @@
             <span class="gbtn" data-g="남">남</span>
             <span class="gbtn" data-g="여">여</span>
         </div>
+        <button class="ov-btn" id="ovBtn">🌏 재외국민만 보기</button>
         <div id="metaNote"></div>
     </div>
 
@@ -163,6 +169,7 @@
     <script>
     let map, geo = null, meta = null, years = [], curYear, gender = '계';
     let activeRegion = '';       // '' = 전체, 아니면 특정 시/군/구
+    let showOverseas = false;    // 재외국민 보기 토글
     let featureByCode = {};      // code -> naver Data feature
     let rawByCode = {};          // code -> properties(원본)
     let panelCode = null, panelChart = null;
@@ -219,11 +226,23 @@
             updateCounts();
             if (panelCode && rawByCode[panelCode].region !== activeRegion && activeRegion) closePanel();
         });
+        // 재외국민 토글
+        const ovBtn = document.getElementById('ovBtn');
+        if (!meta['재외국민포함']) { ovBtn.style.display = 'none'; }
+        ovBtn.addEventListener('click', () => {
+            showOverseas = !showOverseas;
+            ovBtn.classList.toggle('on', showOverseas);
+            ovBtn.textContent = showOverseas ? '🌏 재외국민 보는 중 (끄기)' : '🌏 재외국민만 보기';
+            refresh();
+        });
         const refY = meta['통계기준_연도'];
         document.getElementById('metaNote').innerHTML =
-            `${(meta['지역목록'] || []).length}개 시/군/구 · ${meta['등록구분'] || ''}<br>` +
-            `통계기준 ${meta['통계기준'] || ''} · 수집 ${(meta['수집일시'] || '').slice(0, 10)}<br>` +
-            `※ ${refY}년 기준 연령 = ${refY} − 출생연도`;
+            `${(meta['지역목록'] || []).length}개 시/군/구 · 기준 ${meta['기본등록구분'] || '전체'}(등록인구)<br>` +
+            `<b>통계기준 ${meta['통계기준'] || ''}</b> · 수집 ${(meta['수집일시'] || '').slice(0, 10)}<br>` +
+            `※ ${refY}년 기준 연령 = ${refY} − 출생연도 · 재외국민 비중 = 재외국민/전체`;
+        const cr = document.querySelector('.src-credit');
+        if (cr) cr.textContent =
+            `데이터 · 행정안전부 주민등록 인구통계 (${meta['통계기준'] || ''} 기준) · 행정동 경계 vuski/admdongkor`;
         updateYearLabel();
     }
 
@@ -260,13 +279,27 @@
             refY ? `(${refY}년 기준 만 ${refY - curYear}세 전후)` : '';
     }
 
-    function popOf(props, year, g) {
-        const y = (props.byYear || {})[String(year)];
+    // set: 'overseas' → 재외국민, 그 외 → 전체(byYear)
+    function popOf(props, year, g, set) {
+        const src = (set === 'overseas') ? props.byOverseas : props.byYear;
+        const y = (src || {})[String(year)];
         return y ? (y[g] || 0) : 0;
+    }
+    function curSet() { return showOverseas ? 'overseas' : 'total'; }
+    function popSum(props, g, set) { return years.reduce((a, y) => a + popOf(props, y, g, set), 0); }
+    // 지도 칠하기 값: 전체=연생별 인구, 재외국민=1~19세 합(연생별은 너무 희박)
+    function mapValue(props, g) {
+        return showOverseas ? popSum(props, g, 'overseas') : popOf(props, curYear, g, 'total');
+    }
+    // 행정동의 전체 대비 재외국민 비중(%) — 1~19세 합 기준
+    function dongRatio(props, g) {
+        const ov = years.reduce((a, y) => a + popOf(props, y, g, 'overseas'), 0);
+        const tot = years.reduce((a, y) => a + popOf(props, y, g, 'total'), 0);
+        return tot ? (ov / tot * 100) : 0;
     }
     function curMax() {
         let m = 0;
-        for (const c in rawByCode) if (isVisible(c)) m = Math.max(m, popOf(rawByCode[c], curYear, gender));
+        for (const c in rawByCode) if (isVisible(c)) m = Math.max(m, mapValue(rawByCode[c], gender));
         return m || 1;
     }
     function lerp(a, b, t) { return a.map((x, i) => Math.round(x + (b[i] - x) * t)); }
@@ -297,7 +330,8 @@
         const code = feature.getProperty('code');
         if (!isVisible(code))   // 선택 지역이 아니면 숨김
             return { fillOpacity: 0, strokeWeight: 0, strokeOpacity: 0, clickable: false };
-        const v = popOf({ byYear: feature.getProperty('byYear') }, curYear, gender);
+        const v = mapValue({ byYear: feature.getProperty('byYear'),
+                             byOverseas: feature.getProperty('byOverseas') }, gender);
         return { fillColor: colorOf(v, curMax()), fillOpacity: 0.78,
                  strokeColor: '#ffffff', strokeWeight: 1.4, clickable: true };
     }
@@ -305,6 +339,7 @@
     function refresh() {
         updateYearLabel();
         map.data.setStyle(styleFn);
+        document.getElementById('legendTitle').textContent = showOverseas ? '재외국민(1~19세)' : '인구수';
         document.getElementById('legendMax').textContent = curMax().toLocaleString() + '명';
         if (panelCode) {        // 패널 열려 있으면 KPI 텍스트 + 차트 강조도 갱신
             updatePanelKpis(panelCode);
@@ -317,10 +352,20 @@
         const l1 = document.getElementById('pk1lab'), v1 = document.getElementById('pk1val');
         const l2 = document.getElementById('pk2lab'), v2 = document.getElementById('pk2val');
         if (!l1) return;
-        l1.textContent = `${curYear}년생 (${gender})`;
-        v1.textContent = popOf(p, curYear, gender).toLocaleString();
-        l2.textContent = `${years[0]}~${years[years.length - 1]}년생 합 (${gender})`;
-        v2.textContent = years.reduce((a, y) => a + popOf(p, y, gender), 0).toLocaleString();
+        const ttl = document.getElementById('chartTtl');
+        if (showOverseas) {
+            l1.textContent = `${curYear}년생 재외국민 (${gender})`;
+            v1.innerHTML = popOf(p, curYear, gender, 'overseas').toLocaleString() + '<small> 명</small>';
+            l2.textContent = `전체 대비 재외국민 비중 (${gender})`;
+            v2.innerHTML = dongRatio(p, gender).toFixed(2) + '<small> %</small>';
+            if (ttl) ttl.innerHTML = `출생연도별 재외국민 <span class="sub">${p.region || ''} ${p.name} · ${gender}</span>`;
+        } else {
+            l1.textContent = `${curYear}년생 (${gender})`;
+            v1.innerHTML = popOf(p, curYear, gender, 'total').toLocaleString() + '<small> 명</small>';
+            l2.textContent = `${years[0]}~${years[years.length - 1]}년생 합 (${gender})`;
+            v2.innerHTML = years.reduce((a, y) => a + popOf(p, y, gender, 'total'), 0).toLocaleString() + '<small> 명</small>';
+            if (ttl) ttl.innerHTML = `출생연도별 인구 <span class="sub">${p.region || ''} ${p.name} · ${gender}</span>`;
+        }
     }
 
     // ── 호버 툴팁 ──
@@ -329,8 +374,9 @@
         if (!e) { tip.style.display = 'none'; return; }
         const p = e.feature.getProperties ? null : null;
         const props = rawByCode[e.feature.getProperty('code')];
-        const v = popOf(props, curYear, gender);
-        tip.innerHTML = `${props.name} · ${curYear}년생 <b>${v.toLocaleString()}명</b>`;
+        tip.innerHTML = showOverseas
+            ? `${props.name} · 재외국민(1~19세) <b>${popSum(props, gender, 'overseas').toLocaleString()}명</b> · 비중 ${dongRatio(props, gender).toFixed(2)}%`
+            : `${props.name} · ${curYear}년생 <b>${popOf(props, curYear, gender, 'total').toLocaleString()}명</b>`;
         tip.style.display = 'block';
         const pt = e.pointerEvent || e.domEvent;
         if (pt) { tip.style.left = (pt.clientX + 12) + 'px'; tip.style.top = (pt.clientY + 12) + 'px'; }
@@ -342,18 +388,15 @@
         const p = rawByCode[code];
         document.getElementById('pGu').textContent = p.region || '';
         document.getElementById('pName').textContent = p.name;
-        const refY = meta['통계기준_연도'];
-        const totalKids = years.reduce((a, y) => a + popOf(p, y, gender), 0);
         let html = '<div class="pkpi">';
-        html += `<div class="b"><div class="lab" id="pk1lab">${curYear}년생 (${gender})</div>
-            <div class="val"><span id="pk1val">${popOf(p, curYear, gender).toLocaleString()}</span><small> 명</small></div></div>`;
-        html += `<div class="b"><div class="lab" id="pk2lab">${years[0]}~${years[years.length-1]}년생 합 (${gender})</div>
-            <div class="val"><span id="pk2val">${totalKids.toLocaleString()}</span><small> 명</small></div></div>`;
+        html += `<div class="b"><div class="lab" id="pk1lab"></div><div class="val" id="pk1val"></div></div>`;
+        html += `<div class="b"><div class="lab" id="pk2lab"></div><div class="val" id="pk2val"></div></div>`;
         html += '</div>';
-        html += `<div class="card"><h3>출생연도별 인구 <span class="sub">${p.region||''} ${p.name} · ${gender}</span></h3>
+        html += `<div class="card"><h3 id="chartTtl"></h3>
             <div class="chart-wrap"><canvas id="dongChart"></canvas></div></div>`;
         document.getElementById('pbody').innerHTML = html;
         document.getElementById('panel').classList.add('open');
+        updatePanelKpis(code);
         renderPanelChart(code);
     }
 
@@ -362,8 +405,9 @@
         if (!document.getElementById('dongChart')) return;
         const refY = meta['통계기준_연도'];
         const labels = years.map(y => y + '년생');
-        const data = years.map(y => popOf(p, y, gender));
-        const colors = years.map(y => y === curYear ? '#6d28d9' : '#c4b5fd');
+        const data = years.map(y => popOf(p, y, gender, curSet()));
+        const hi = showOverseas ? '#0e7490' : '#6d28d9', lo = showOverseas ? '#a5d8e6' : '#c4b5fd';
+        const colors = years.map(y => y === curYear ? hi : lo);
         if (panelChart) panelChart.destroy();
         Chart.defaults.font.family = "'Malgun Gothic', sans-serif";
         panelChart = new Chart(document.getElementById('dongChart'), {
