@@ -11,10 +11,10 @@
     </script>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>외국인 여지도 — 시군구별 외국인 인구</title>
+    <title>소득 여지도 — 시군구별 평균소득</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
-        :root { --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --accent:#0d9488; }
+        :root { --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --accent:#059669; }
         * { box-sizing:border-box; }
         html, body { margin:0; padding:0; height:100%;
             font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif; color:var(--ink); }
@@ -33,25 +33,21 @@
         .ymenu-pop.open { display:block; }
         .ymi { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:8px;
             text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600; }
-        .ymi:hover { background:#f3f4f6; } .ymi.active { background:#f0fdfa; color:var(--accent); }
+        .ymi:hover { background:#f3f4f6; } .ymi.active { background:#ecfdf5; color:var(--accent); }
         .ymi .ico { font-size:16px; width:20px; text-align:center; } .ymi-sep { height:1px; background:var(--line); margin:5px 6px; }
 
-        #controls { position:fixed; top:60px; left:16px; z-index:25; width:280px; max-width:92vw;
+        #controls { position:fixed; top:60px; left:16px; z-index:25; width:268px; max-width:92vw;
             background:rgba(255,255,255,0.97); border-radius:14px; box-shadow:0 2px 14px rgba(0,0,0,0.14); padding:14px 16px; }
         #controls label { font-size:11.5px; color:var(--muted); font-weight:700; display:block; margin:2px 0 4px; }
-        #controls select { width:100%; font-size:13.5px; font-weight:700; padding:7px 9px; margin-bottom:10px;
+        #controls select { width:100%; font-size:13.5px; font-weight:700; padding:7px 9px;
             border:1.5px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); outline:none; }
         #controls select:focus { border-color:var(--accent); }
-        .mode-toggle { display:flex; gap:6px; margin-bottom:11px; }
-        .mbtn { flex:1; text-align:center; padding:7px 0; border-radius:8px; border:1.5px solid var(--line);
-            background:#fff; color:var(--muted); font-size:13px; font-weight:700; cursor:pointer; }
-        .mbtn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
-        #metaNote { margin-top:4px; padding-top:10px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); line-height:1.6; }
+        #metaNote { margin-top:11px; padding-top:10px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); line-height:1.6; }
 
         #legend { position:fixed; left:16px; bottom:16px; z-index:20; background:rgba(255,255,255,0.96);
             border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.12); padding:11px 13px; font-size:11.5px; }
         #legend .bar { width:180px; height:12px; border-radius:3px; margin:6px 0 3px;
-            background:linear-gradient(90deg,#e0f2f1,#4db6ac 55%,#00695c); }
+            background:linear-gradient(90deg,#d1fae5,#10b981 55%,#064e3b); }
         #legend .ends { display:flex; justify-content:space-between; color:var(--muted); }
         #legend .ttl { font-weight:700; }
 
@@ -60,20 +56,22 @@
             transition:transform .28s cubic-bezier(.4,0,.2,1); overflow-y:auto; }
         #panel.open { transform:translateX(0); }
         .phead { position:sticky; top:0; z-index:2; padding:16px 18px 14px; color:#fff;
-            background:linear-gradient(135deg,#0f766e,var(--accent)); }
+            background:linear-gradient(135deg,#047857,var(--accent)); }
         .phead .close { position:absolute; top:12px; right:12px; z-index:5; cursor:pointer; width:30px; height:30px;
             border-radius:50%; border:none; background:rgba(255,255,255,0.22); color:#fff; font-size:17px; }
-        .phead .sido, .phead h2 { padding-right:34px; }   /* X 버튼과 안 겹치게 */
+        .phead .sido, .phead h2 { padding-right:34px; }
         .phead .sido { font-size:12px; opacity:.9; font-weight:600; }
         .phead h2 { margin:3px 0 0; font-size:21px; font-weight:800; letter-spacing:-0.5px; }
+        .phead .big { margin-top:8px; font-size:13px; opacity:.95; } .phead .big b { font-size:24px; }
         .pbody { padding:14px 16px 40px; }
         .pkpi { display:flex; gap:9px; margin-bottom:12px; }
         .pkpi .b { flex:1; background:#fff; border:1px solid var(--line); border-radius:12px; padding:11px 12px; }
         .pkpi .lab { font-size:11px; color:var(--muted); font-weight:600; }
-        .pkpi .val { font-size:20px; font-weight:800; margin-top:2px; } .pkpi .val small { font-size:12px; color:var(--muted); font-weight:600; }
+        .pkpi .val { font-size:19px; font-weight:800; margin-top:2px; } .pkpi .val small { font-size:12px; color:var(--muted); font-weight:600; }
         .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:13px 14px; }
         .card h3 { margin:0 0 4px; font-size:13.5px; } .card .sub { font-size:11.5px; color:var(--muted); font-weight:500; }
-        .chart-wrap { position:relative; height:300px; margin-top:8px; }
+        .chart-wrap { position:relative; height:320px; margin-top:8px; }
+        .note { font-size:11px; color:var(--muted); line-height:1.55; margin-top:12px; }
 
         #tip { position:fixed; z-index:35; pointer-events:none; display:none; background:rgba(31,41,55,0.92);
             color:#fff; font-size:12px; font-weight:600; padding:5px 9px; border-radius:7px; white-space:nowrap; }
@@ -100,7 +98,7 @@
     <div id="header">
         <div class="ymenu">
             <button class="ymenu-trigger" onclick="toggleYmenu(event)">
-                <span class="tk">🌏</span><span class="t">외국인 여지도</span><span class="caret">▾</span>
+                <span class="tk">💰</span><span class="t">소득 여지도</span><span class="caret">▾</span>
             </button>
             <div class="ymenu-pop" id="ymenuPop">
                 <a class="ymi" href="/"><span class="ico">🏠</span>여지도 홈</a>
@@ -109,54 +107,49 @@
                 <a class="ymi" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
                 <a class="ymi" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
                 <a class="ymi" href="/popmap/"><span class="ico">👶</span>인구 여지도</a>
-                <a class="ymi active" href="/foreignmap/"><span class="ico">🌏</span>외국인 여지도</a>
+                <a class="ymi" href="/foreignmap/"><span class="ico">🌏</span>외국인 여지도</a>
                 <a class="ymi" href="/childmap/"><span class="ico">🏥</span>어린이병원 여지도</a>
                 <a class="ymi" href="/runningmap/"><span class="ico">🏃</span>러닝코스 여지도</a>
-                <a class="ymi" href="/incomemap/"><span class="ico">💰</span>소득 여지도</a>
+                <a class="ymi active" href="/incomemap/"><span class="ico">💰</span>소득 여지도</a>
             </div>
         </div>
         <span id="count"></span>
     </div>
 
     <div id="controls">
-        <div class="mode-toggle" id="modeToggle">
-            <span class="mbtn on" data-m="nat">국적별</span>
-            <span class="mbtn" data-m="qual">체류자격별</span>
-        </div>
-        <label id="catLabel">국적</label>
-        <select id="catSel"><option value="전체">전체 (총 외국인)</option></select>
         <label>지역(시·도)</label>
         <select id="sidoSel"><option value="">전국</option></select>
         <div id="metaNote"></div>
     </div>
 
     <div id="legend">
-        <div class="ttl" id="legendTitle">외국인 수</div>
+        <div class="ttl">1인당 평균소득</div>
         <div class="bar"></div>
-        <div class="ends"><span>0</span><span id="legendMax">–</span></div>
+        <div class="ends"><span id="legendMin">–</span><span id="legendMax">–</span></div>
     </div>
 
     <div id="tip"></div>
-    <div class="src-credit">데이터 · 법무부 출입국·외국인정책본부 · 경계 vuski/admdongkor</div>
+    <div class="src-credit">데이터 · 국세청 시군구별 근로소득 연말정산</div>
 
     <div id="panel">
         <div class="phead" id="phead">
             <button class="close" onclick="closePanel()">✕</button>
             <div class="sido" id="pSido"></div>
             <h2 id="pName"></h2>
+            <div class="big" id="pBig"></div>
         </div>
         <div class="pbody" id="pbody"></div>
     </div>
 
-    <div id="spinner"><div style="text-align:center"><div class="ring"></div><div style="margin-top:12px">외국인 데이터를 불러오는 중…</div></div></div>
+    <div id="spinner"><div style="text-align:center"><div class="ring"></div><div style="margin-top:12px">소득 데이터를 불러오는 중…</div></div></div>
 
     <script type="text/javascript"
         src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
     <script>
-    let map, geo = null, meta = null, nats = [], quals = [], activeSido = '';
-    let mode = 'nat', curCat = '전체';   // mode: 'nat'(국적) | 'qual'(자격)
+    let map, geo = null, meta = null, activeSido = '';
     let rawByCode = {}, panelCode = null, panelChart = null;
-    const LOW = [224, 242, 241], MID = [38, 166, 154], HIGH = [0, 77, 64];
+    let natAvg = 0, ranked = [];   // ranked: 전국 평균소득 내림차순 code 배열
+    const LOW = [209, 250, 229], MID = [16, 185, 129], HIGH = [6, 78, 59];
 
     window.navermap_authFailure = () => showErr('네이버 지도 인증 실패: 현재 주소가 등록돼 있어야 합니다.');
 
@@ -170,13 +163,14 @@
     }
 
     function loadData() {
-        fetch('./foreign-population.geojson')
+        fetch('./income.geojson')
             .then(r => { if (!r.ok) throw new Error('네트워크 오류'); return r.json(); })
             .then(g => {
                 geo = g; meta = g.meta || {};
-                nats = meta['국적목록'] || [];
-                quals = meta['자격목록'] || [];
+                natAvg = meta['전국평균'] || 0;
                 g.features.forEach(f => { rawByCode[f.properties.code] = f.properties; });
+                ranked = g.features.map(f => f.properties.code)
+                    .sort((a, b) => rawByCode[b].avg - rawByCode[a].avg);
                 setupControls();
                 drawData(g);
                 document.getElementById('spinner').classList.add('hidden');
@@ -184,65 +178,34 @@
             .catch(e => { console.error(e); showErr('데이터를 불러오지 못했습니다.'); });
     }
 
-    function curCats() { return mode === 'nat' ? nats : quals; }
-    function catWord() { return mode === 'nat' ? '국적' : '체류자격'; }
-
-    function fillCatSel() {
-        const sel = document.getElementById('catSel');
-        sel.innerHTML = '<option value="전체">전체 (총 외국인)</option>';
-        curCats().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
-        sel.value = '전체'; curCat = '전체';
-        document.getElementById('catLabel').textContent = catWord();
-    }
-
     function setupControls() {
-        fillCatSel();
-        document.getElementById('catSel').addEventListener('change', e => { curCat = e.target.value; refresh(); });
-
-        // 국적별 / 자격별 모드 전환
-        document.getElementById('modeToggle').addEventListener('click', e => {
-            const b = e.target.closest('.mbtn'); if (!b) return;
-            mode = b.dataset.m;
-            [...document.querySelectorAll('.mbtn')].forEach(x => x.classList.toggle('on', x === b));
-            fillCatSel();
-            refresh();
-        });
-
         const ssel = document.getElementById('sidoSel');
-        const sidos = [...new Set(geo.features.map(f => f.properties.sido))];
-        sidos.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; ssel.appendChild(o); });
+        [...new Set(geo.features.map(f => f.properties.sido))].forEach(s => {
+            const o = document.createElement('option'); o.value = s; o.textContent = s; ssel.appendChild(o);
+        });
         ssel.addEventListener('change', () => {
             activeSido = ssel.value;
             map.data.setStyle(styleFn); fitToSido(activeSido); updateCounts();
             if (panelCode && rawByCode[panelCode].sido !== activeSido && activeSido) closePanel();
         });
-
         const ref = meta['통계기준'] || '';
         document.getElementById('metaNote').innerHTML =
-            `전국 외국인 ${(meta['전국외국인'] || 0).toLocaleString()}명<br>` +
-            `<b>기준 ${ref}</b> · 등록+거소<br>` +
-            `색: 시군구별 외국인 수`;
-        // 하단 출처에도 기준 연월을 함께 표기
+            `지표 · <b>근로소득 1인당 평균</b><br>전국평균 <b>${natAvg.toLocaleString()}만원</b> · 기준 ${ref}<br>` +
+            `<span style="color:#9ca3af">중위소득은 시군구 공개통계가 없어 미제공</span>`;
         document.querySelector('.src-credit').textContent =
-            `데이터 · 법무부 출입국·외국인정책본부 (${ref} 기준) · 경계 vuski/admdongkor`;
+            `데이터 · 국세청 시군구별 근로소득 연말정산 (${ref})`;
     }
 
-    function valOf(props, cat) {
-        if (cat === '전체') return props.total || 0;
-        const src = mode === 'nat' ? props.nat : props.qual;
-        return (src || {})[cat] || 0;
-    }
     function isVisible(code) { return !activeSido || (rawByCode[code] && rawByCode[code].sido === activeSido); }
-    function curMax() {
-        let m = 0;
-        for (const c in rawByCode) if (isVisible(c)) m = Math.max(m, valOf(rawByCode[c], curCat));
-        return m || 1;
+    function visExtent() {
+        let mn = Infinity, mx = 0;
+        for (const c in rawByCode) if (isVisible(c)) { mn = Math.min(mn, rawByCode[c].avg); mx = Math.max(mx, rawByCode[c].avg); }
+        return [mn === Infinity ? 0 : mn, mx || 1];
     }
-    function legendLabel() { return curCat === '전체' ? '외국인 수' : curCat + ' 인구'; }
     function lerp(a, b, t) { return a.map((x, i) => Math.round(x + (b[i] - x) * t)); }
-    function colorOf(v, max) {
+    function colorOf(v, mn, mx) {
         if (!v) return '#eef0f3';
-        const t = Math.pow(v / max, 0.5);   // 분포가 치우쳐 sqrt 스케일
+        const t = Math.max(0, Math.min(1, (v - mn) / (mx - mn || 1)));
         const c = t < 0.5 ? lerp(LOW, MID, t / 0.5) : lerp(MID, HIGH, (t - 0.5) / 0.5);
         return `rgb(${c[0]},${c[1]},${c[2]})`;
     }
@@ -251,7 +214,7 @@
         map.data.addGeoJson({ type: 'FeatureCollection', features: g.features });
         map.data.setStyle(styleFn);
         map.data.addListener('click', e => openPanel(e.feature.getProperty('code')));
-        map.data.addListener('mouseover', e => { map.data.overrideStyle(e.feature, { fillOpacity: 0.95, strokeWeight: 2 }); showTip(e); });
+        map.data.addListener('mouseover', e => { map.data.overrideStyle(e.feature, { fillOpacity: 0.97, strokeWeight: 2 }); showTip(e); });
         map.data.addListener('mouseout', () => { map.data.revertStyle(); showTip(null); });
         map.data.addListener('mousemove', e => showTip(e));
         updateCounts();
@@ -260,15 +223,9 @@
     function styleFn(feature) {
         const code = feature.getProperty('code');
         if (!isVisible(code)) return { fillOpacity: 0, strokeWeight: 0, strokeOpacity: 0, clickable: false };
-        const v = valOf(rawByCode[code], curCat);
-        return { fillColor: colorOf(v, curMax()), fillOpacity: 0.8, strokeColor: '#ffffff', strokeWeight: 0.8, clickable: true };
-    }
-
-    function refresh() {
-        map.data.setStyle(styleFn);
-        document.getElementById('legendTitle').textContent = legendLabel();
-        document.getElementById('legendMax').textContent = curMax().toLocaleString() + '명';
-        if (panelCode) openPanel(panelCode);
+        const [mn, mx] = visExtent();
+        return { fillColor: colorOf(rawByCode[code].avg, mn, mx), fillOpacity: 0.82,
+                 strokeColor: '#ffffff', strokeWeight: 0.8, clickable: true };
     }
 
     function fitToSido(sido) {
@@ -291,16 +248,16 @@
     function updateCounts() {
         const vis = geo.features.filter(f => isVisible(f.properties.code));
         document.getElementById('count').textContent = `${vis.length}개 시군구`;
-        document.getElementById('legendTitle').textContent = legendLabel();
-        document.getElementById('legendMax').textContent = curMax().toLocaleString() + '명';
+        const [mn, mx] = visExtent();
+        document.getElementById('legendMin').textContent = mn.toLocaleString() + '만';
+        document.getElementById('legendMax').textContent = mx.toLocaleString() + '만';
     }
 
     function showTip(e) {
         const tip = document.getElementById('tip');
         if (!e) { tip.style.display = 'none'; return; }
         const p = rawByCode[e.feature.getProperty('code')];
-        const v = valOf(p, curCat);
-        tip.innerHTML = `${p.sido} ${p.name} · ${curCat === '전체' ? '외국인' : curCat} <b>${v.toLocaleString()}명</b>`;
+        tip.innerHTML = `${p.sido} ${p.name} · 평균 <b>${p.avg.toLocaleString()}만원</b>`;
         tip.style.display = 'block';
         const pt = e.pointerEvent || e.domEvent;
         if (pt) { tip.style.left = (pt.clientX + 12) + 'px'; tip.style.top = (pt.clientY + 12) + 'px'; }
@@ -309,39 +266,46 @@
     function openPanel(code) {
         panelCode = code;
         const p = rawByCode[code];
-        document.getElementById('pSido').textContent = p.sido;
+        const rank = ranked.indexOf(code) + 1, n = ranked.length;
+        const diff = natAvg ? Math.round((p.avg / natAvg - 1) * 100) : 0;
+        const diffStr = (diff > 0 ? '+' : '') + diff + '%';
+        document.getElementById('pSido').textContent = p.sido + (p.poly && p.poly !== p.name ? ' · ' + p.poly : '');
         document.getElementById('pName').textContent = p.name;
-        const f = p.female || 0, m = p.male || 0;
+        document.getElementById('pBig').innerHTML = `1인당 평균소득 <b>${p.avg.toLocaleString()}</b> 만원`;
+
         let html = '<div class="pkpi">';
-        html += `<div class="b"><div class="lab">외국인 ${curCat === '전체' ? '총수' : '(' + curCat + ')'}</div>
-            <div class="val">${valOf(p, curCat).toLocaleString()}<small> 명</small></div></div>`;
-        html += `<div class="b"><div class="lab">성별(총)</div>
-            <div class="val" style="font-size:15px">남 ${m.toLocaleString()} · 여 ${f.toLocaleString()}</div></div>`;
+        html += `<div class="b"><div class="lab">전국 순위</div><div class="val">${rank}<small> / ${n}위</small></div></div>`;
+        html += `<div class="b"><div class="lab">전국평균 대비</div><div class="val" style="color:${diff >= 0 ? '#059669' : '#dc2626'}">${diffStr}</div></div>`;
         html += '</div>';
-        html += `<div class="card"><h3>${catWord()}별 외국인 <span class="sub">${p.sido} ${p.name} · 상위 ${curCats().length}개</span></h3>
-            <div class="chart-wrap"><canvas id="natChart"></canvas></div></div>`;
+        html += `<div class="pkpi"><div class="b"><div class="lab">근로소득자</div>
+            <div class="val" style="font-size:16px">${(p.earners || 0).toLocaleString()}<small> 명</small></div></div></div>`;
+        html += `<div class="card"><h3>${p.sido} 시군구 평균소득 <span class="sub">만원 · 높은순</span></h3>
+            <div class="chart-wrap"><canvas id="rankChart"></canvas></div></div>`;
+        html += `<div class="note">· 근로소득 연말정산 신고분(주소지) 기준 1인당 평균 급여총계입니다.<br>
+            · 일반구(예: 수원시 장안구)는 시(수원시) 단위 값으로 표시됩니다.<br>
+            · 중위소득은 시군구 단위 공개통계가 없어 제공하지 않습니다.</div>`;
         document.getElementById('pbody').innerHTML = html;
         document.getElementById('panel').classList.add('open');
-        renderPanelChart(code);
+        renderRankChart(code);
     }
 
-    function renderPanelChart(code) {
+    function renderRankChart(code) {
         const p = rawByCode[code];
-        if (!document.getElementById('natChart')) return;
-        const src = mode === 'nat' ? (p.nat || {}) : (p.qual || {});
-        const pairs = curCats().map(n => [n, src[n] || 0]).sort((a, b) => b[1] - a[1]);
-        const labels = pairs.map(x => x[0]), data = pairs.map(x => x[1]);
-        const colors = pairs.map(x => x[0] === curCat ? '#0f766e' : '#5eead4');
+        if (!document.getElementById('rankChart')) return;
+        const peers = geo.features.filter(f => f.properties.sido === p.sido)
+            .map(f => f.properties).sort((a, b) => b.avg - a.avg);
+        const labels = peers.map(x => x.name), data = peers.map(x => x.avg);
+        const colors = peers.map(x => x.code === code ? '#047857' : '#6ee7b7');
         if (panelChart) panelChart.destroy();
         Chart.defaults.font.family = "'Malgun Gothic', sans-serif";
-        panelChart = new Chart(document.getElementById('natChart'), {
+        panelChart = new Chart(document.getElementById('rankChart'), {
             type: 'bar',
             data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 3 }] },
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false },
-                    tooltip: { callbacks: { label: c => c.parsed.x.toLocaleString() + '명' } } },
-                scales: { x: { beginAtZero: true, ticks: { precision: 0 } },
+                    tooltip: { callbacks: { label: c => c.parsed.x.toLocaleString() + '만원' } } },
+                scales: { x: { beginAtZero: false, ticks: { callback: v => v.toLocaleString() } },
                           y: { grid: { display: false }, ticks: { font: { size: 10 } } } }
             }
         });

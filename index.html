@@ -58,6 +58,7 @@
         .card.fore    .bar { background: linear-gradient(90deg, #0d9488, #14b8a6); }
         .card.child   .bar { background: linear-gradient(90deg, #e8590c, #f59f00); }
         .card.running .bar { background: linear-gradient(90deg, #0c8599, #66d9e8); }
+        .card.income  .bar { background: linear-gradient(90deg, #047857, #6ee7b7); }
         .card .emoji {
             font-size: 38px; width: 64px; height: 64px; border-radius: 16px;
             display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
@@ -69,6 +70,7 @@
         .card.fore    .emoji { background: #f0fdfa; }
         .card.child   .emoji { background: #fff4e6; }
         .card.running .emoji { background: #e3fafc; }
+        .card.income  .emoji { background: #ecfdf5; }
         .card h2 { margin: 0 0 7px; font-size: 19px; font-weight: 800; letter-spacing: -0.5px; }
         .card p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.55; flex: 1; }
         .card .go {
@@ -151,6 +153,14 @@
                 <div class="emoji">🏃</div>
                 <h2>러닝코스 여지도</h2>
                 <p>전국 둘레길·산책길 지도. 길이·소요시간·경로와 길찾기를 한눈에.</p>
+                <span class="go">지도 열기 <span class="arr">→</span></span>
+            </a>
+
+            <a class="card income" href="/incomemap/">
+                <span class="bar"></span>
+                <div class="emoji">💰</div>
+                <h2>소득 여지도</h2>
+                <p>전국 시군구별 1인당 평균소득(근로소득) 지도. 지역별 소득 격차를 색으로.</p>
                 <span class="go">지도 열기 <span class="arr">→</span></span>
             </a>
         </div>
