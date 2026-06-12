@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JS10ZVJZKX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JS10ZVJZKX');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>여지도 — 지도로 보는 우리 동네 정보</title>
@@ -49,6 +57,7 @@
         .card.pop     .bar { background: linear-gradient(90deg, #7c3aed, #ec4899); }
         .card.fore    .bar { background: linear-gradient(90deg, #0d9488, #14b8a6); }
         .card.child   .bar { background: linear-gradient(90deg, #e8590c, #f59f00); }
+        .card.running .bar { background: linear-gradient(90deg, #0c8599, #66d9e8); }
         .card .emoji {
             font-size: 38px; width: 64px; height: 64px; border-radius: 16px;
             display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
@@ -59,6 +68,7 @@
         .card.pop     .emoji { background: #f5f3ff; }
         .card.fore    .emoji { background: #f0fdfa; }
         .card.child   .emoji { background: #fff4e6; }
+        .card.running .emoji { background: #e3fafc; }
         .card h2 { margin: 0 0 7px; font-size: 19px; font-weight: 800; letter-spacing: -0.5px; }
         .card p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.55; flex: 1; }
         .card .go {
@@ -133,6 +143,14 @@
                 <div class="emoji">🏥</div>
                 <h2>어린이병원 여지도</h2>
                 <p>달빛어린이병원 등 소아 진료기관 위치 지도. 야간·휴일 진료를 빠르게.</p>
+                <span class="go">지도 열기 <span class="arr">→</span></span>
+            </a>
+
+            <a class="card running" href="/runningmap/">
+                <span class="bar"></span>
+                <div class="emoji">🏃</div>
+                <h2>러닝코스 여지도</h2>
+                <p>전국 둘레길·산책길 지도. 길이·소요시간·경로와 길찾기를 한눈에.</p>
                 <span class="go">지도 열기 <span class="arr">→</span></span>
             </a>
         </div>

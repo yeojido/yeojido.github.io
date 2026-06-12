@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JS10ZVJZKX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JS10ZVJZKX');
+    </script>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>스피또 여지도 — 복권 판매점 지도</title>
@@ -184,6 +192,7 @@
                 <a class="ymi" href="/popmap/"><span class="ico">👶</span>인구 여지도</a>
                 <a class="ymi" href="/foreignmap/"><span class="ico">🌏</span>외국인 여지도</a>
                 <a class="ymi" href="/childmap/"><span class="ico">🏥</span>어린이병원 여지도</a>
+                <a class="ymi" href="/runningmap/"><span class="ico">🏃</span>러닝코스 여지도</a>
             </div>
         </div>
         <div class="controls" id="chips">
@@ -266,6 +275,7 @@
                 });
                 document.getElementById('spinner').classList.add('hidden');
                 refresh();
+                goToInitialView();   // 현재 위치로 이동(실패 시 기본 위치)
             })
             .catch(err => {
                 console.error(err);
@@ -451,18 +461,34 @@
     });
 
     // ── 현재 위치 ──
+    function placeCurPos(loc) {
+        if (curPosMarker) curPosMarker.setMap(null);
+        curPosMarker = new naver.maps.Marker({
+            position: loc, map, zIndex: 1000,
+            icon: { content: '<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px #2563eb"></div>',
+                    anchor: new naver.maps.Point(8, 8) }
+        });
+    }
+
     function goCurrentPosition() {
         if (!navigator.geolocation) return alert('현재 위치를 사용할 수 없습니다.');
         navigator.geolocation.getCurrentPosition(p => {
             const loc = new naver.maps.LatLng(p.coords.latitude, p.coords.longitude);
-            map.setZoom(15); map.setCenter(loc);
-            if (curPosMarker) curPosMarker.setMap(null);
-            curPosMarker = new naver.maps.Marker({
-                position: loc, map, zIndex: 1000,
-                icon: { content: '<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px #2563eb"></div>',
-                        anchor: new naver.maps.Point(8, 8) }
-            });
+            map.setZoom(15); map.setCenter(loc); placeCurPos(loc);
         }, () => alert('현재 위치를 가져올 수 없습니다.'));
+    }
+
+    // 페이지 로드 시: 현재 위치로 이동(거부/실패 시 기본 위치 유지)
+    function goToInitialView() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            p => {
+                const loc = new naver.maps.LatLng(p.coords.latitude, p.coords.longitude);
+                map.setCenter(loc); map.setZoom(15); placeCurPos(loc);
+            },
+            () => {},
+            { timeout: 6000, maximumAge: 600000 }
+        );
     }
 
     function showMapError() {

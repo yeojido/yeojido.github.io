@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JS10ZVJZKX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JS10ZVJZKX');
+    </script>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>러닝코스 여지도 — 전국 둘레길·산책길</title>
+    <style>
+        :root { --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --accent:#0c8599; }
+        * { box-sizing:border-box; }
+        html, body { margin:0; padding:0; height:100%;
+            font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif; color:var(--ink); }
+        #map { position:fixed; top:0; left:0; width:100vw; height:100vh; }
+
+        #header { position:fixed; top:0; left:0; right:0; z-index:30; display:flex; align-items:center; gap:12px;
+            flex-wrap:wrap; padding:10px 16px; background:rgba(255,255,255,0.96); box-shadow:0 1px 8px rgba(0,0,0,0.08); backdrop-filter:blur(6px); }
+        #count { font-size:12.5px; color:var(--muted); font-weight:600; }
+        #regionSel { font-family:inherit; font-size:13px; font-weight:700; color:var(--ink); border:1px solid var(--line);
+            border-radius:9px; padding:6px 10px; background:#fff; cursor:pointer; }
+
+        .ymenu { position:relative; }
+        .ymenu-trigger { display:flex; align-items:center; gap:7px; cursor:pointer; background:none; border:none;
+            padding:2px 4px; font-family:inherit; font-size:18px; font-weight:800; letter-spacing:-0.5px; color:var(--ink); }
+        .ymenu-trigger .tk { font-size:17px; } .ymenu-trigger .caret { font-size:11px; color:var(--muted); }
+        .ymenu-pop { position:absolute; top:calc(100% + 9px); left:0; min-width:212px; background:#fff;
+            border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.16); padding:6px; z-index:50; display:none; }
+        .ymenu-pop.open { display:block; }
+        .ymi { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:8px; text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600; }
+        .ymi:hover { background:#f3f4f6; } .ymi.active { background:#e3fafc; color:var(--accent); }
+        .ymi .ico { font-size:16px; width:20px; text-align:center; } .ymi-sep { height:1px; background:var(--line); margin:5px 6px; }
+
+        #panel { position:fixed; top:0; right:0; z-index:40; width:400px; max-width:94vw; height:100%;
+            background:var(--bg); box-shadow:-4px 0 24px rgba(0,0,0,0.16); transform:translateX(105%);
+            transition:transform .28s cubic-bezier(.4,0,.2,1); overflow-y:auto; }
+        #panel.open { transform:translateX(0); }
+        .phead { position:sticky; top:0; z-index:2; padding:16px 18px 14px; color:#fff;
+            background:linear-gradient(135deg,#0b7285,var(--accent)); }
+        .phead .close { position:absolute; top:12px; right:12px; z-index:5; cursor:pointer; width:30px; height:30px;
+            border-radius:50%; border:none; background:rgba(255,255,255,0.22); color:#fff; font-size:17px; }
+        .phead .sub { font-size:12px; opacity:.92; font-weight:600; padding-right:34px; }
+        .phead h2 { margin:3px 0 0; font-size:21px; font-weight:800; letter-spacing:-0.5px; padding-right:34px; line-height:1.25; }
+        .pbody { padding:14px 16px 40px; }
+        .intro { font-size:13.5px; line-height:1.6; color:#374151; margin:0 0 14px; }
+        .stats { display:flex; gap:8px; margin:0 0 14px; }
+        .stat { flex:1; background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 8px; text-align:center; }
+        .stat .v { font-size:17px; font-weight:800; color:var(--accent); letter-spacing:-0.5px; }
+        .stat .k { font-size:11px; color:var(--muted); font-weight:600; margin-top:2px; }
+        .rows { background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-bottom:14px; }
+        .row { display:flex; gap:10px; padding:11px 13px; font-size:13px; border-top:1px solid var(--line); }
+        .row:first-child { border-top:none; }
+        .row .rk { color:var(--muted); font-weight:700; width:62px; flex-shrink:0; }
+        .row .rv { color:var(--ink); line-height:1.5; word-break:keep-all; }
+        .navbtns { display:flex; gap:8px; margin-bottom:6px; }
+        .navbtns a { flex:1; text-align:center; text-decoration:none; font-size:13px; font-weight:700; padding:11px 6px;
+            border-radius:11px; color:#fff; }
+        .nb-tmap { background:#ec4899; } .nb-kakao { background:#fee500; color:#3c1e1e; } .nb-naver { background:#03c75a; }
+
+        .geo-btn { position:fixed; right:16px; bottom:16px; z-index:20; width:46px; height:46px; border-radius:50%; border:none;
+            cursor:pointer; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,0.18); font-size:20px; color:var(--accent); }
+        .src-credit { position:fixed; bottom:5px; right:70px; z-index:15; font-size:10.5px; color:rgba(31,41,55,0.6);
+            background:rgba(255,255,255,0.7); padding:2px 8px; border-radius:6px; pointer-events:none;
+            max-width:62vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #spinner { position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+            background:rgba(255,255,255,0.85); font-weight:700; color:var(--muted); }
+        #spinner.hidden { display:none; }
+        .ring { width:38px; height:38px; border:4px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin .9s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @media (max-width:640px) { .ymenu-trigger .t { display:none; }
+            #panel { width:100%; max-width:100%; height:82%; top:auto; bottom:0; border-radius:18px 18px 0 0; transform:translateY(105%); } #panel.open { transform:translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="header">
+        <div class="ymenu">
+            <button class="ymenu-trigger" onclick="toggleYmenu(event)">
+                <span class="tk">🏃</span><span class="t">러닝코스 여지도</span><span class="caret">▾</span>
+            </button>
+            <div class="ymenu-pop" id="ymenuPop">
+                <a class="ymi" href="/"><span class="ico">🏠</span>여지도 홈</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi" href="/speetomap/"><span class="ico">🎟️</span>스피또 여지도</a>
+                <a class="ymi" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
+                <a class="ymi" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
+                <a class="ymi" href="/popmap/"><span class="ico">👶</span>인구 여지도</a>
+                <a class="ymi" href="/foreignmap/"><span class="ico">🌏</span>외국인 여지도</a>
+                <a class="ymi" href="/childmap/"><span class="ico">🏥</span>어린이병원 여지도</a>
+                <a class="ymi active" href="/runningmap/"><span class="ico">🏃</span>러닝코스 여지도</a>
+            </div>
+        </div>
+        <select id="regionSel" onchange="applyRegion()"><option value="">전국</option></select>
+        <span id="count"></span>
+    </div>
+
+    <button class="geo-btn" onclick="goCurrentPosition()" title="현재 위치">◎</button>
+    <div class="src-credit" id="srcCredit">데이터 · 공공데이터포털 전국길관광정보표준데이터</div>
+
+    <div id="panel">
+        <div class="phead" id="phead">
+            <button class="close" onclick="closePanel()">✕</button>
+            <div class="sub" id="pSub"></div>
+            <h2 id="pName"></h2>
+        </div>
+        <div class="pbody" id="pbody"></div>
+    </div>
+
+    <div id="spinner"><div style="text-align:center"><div class="ring"></div><div style="margin-top:12px">러닝코스를 불러오는 중…</div></div></div>
+
+    <script type="text/javascript"
+        src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
+    <script>
+    const DETAIL_ZOOM = 12;   // 이 줌 이상이면 개별 마커, 미만이면 클러스터
+    let map, meta = null, courses = [], shown = [], curPosMarker = null;
+    let nodes = [];           // {course, marker} — 개별 마커(지연 생성)
+    let clusterMarkers = [];
+    let regionFilter = '';
+    let renderScheduled = false;
+
+    window.navermap_authFailure = () => showErr('네이버 지도 인증 실패: 현재 주소가 등록돼 있어야 합니다.');
+
+    function initMap() {
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(36.5, 127.8), zoom: 7,
+            zoomControl: true, zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
+        });
+        naver.maps.Event.addListener(map, 'click', closePanel);
+        naver.maps.Event.addListener(map, 'idle', scheduleRender);
+        loadData();
+    }
+
+    function loadData() {
+        fetch('./running-courses.json')
+            .then(r => { if (!r.ok) throw new Error('네트워크 오류'); return r.json(); })
+            .then(d => {
+                meta = d.meta || {};
+                courses = (d.데이터 || []).filter(c => Array.isArray(c.pos));
+                nodes = courses.map(c => ({ course: c, marker: null, region: c.region }));
+                buildRegionOptions();
+                document.getElementById('srcCredit').textContent =
+                    `데이터 · 공공데이터포털 전국길관광정보표준데이터${meta['기준일자'] ? ' (' + meta['기준일자'] + ')' : ''}`;
+                document.getElementById('spinner').classList.add('hidden');
+                applyRegion();              // shown 설정 + count
+                goToInitialView();          // 현재 위치로 줌(실패 시 전국)
+            })
+            .catch(e => { console.error(e); showErr('데이터를 불러오지 못했습니다.'); });
+    }
+
+    function buildRegionOptions() {
+        const sel = document.getElementById('regionSel');
+        (meta['지역목록'] || []).forEach(r => {
+            const o = document.createElement('option'); o.value = r; o.textContent = r; sel.appendChild(o);
+        });
+    }
+
+    function applyRegion() {
+        regionFilter = document.getElementById('regionSel').value;
+        shown = regionFilter ? nodes.filter(n => n.region === regionFilter) : nodes;
+        document.getElementById('count').textContent =
+            `${shown.length.toLocaleString()}개 코스${regionFilter ? '' : ' · 전국'}`;
+        if (regionFilter) fitTo(shown);
+        render();
+    }
+
+    function fitTo(list) {
+        if (!list.length) return;
+        const b = new naver.maps.LatLngBounds();
+        list.forEach(n => b.extend(new naver.maps.LatLng(n.course.pos[0], n.course.pos[1])));
+        map.fitBounds(b, { top: 80, bottom: 60, left: 60, right: 60 });
+    }
+
+    function scheduleRender() {
+        if (renderScheduled) return;
+        renderScheduled = true;
+        requestAnimationFrame(() => { renderScheduled = false; render(); });
+    }
+
+    // 줌·뷰포트에 따라 개별 마커(컬링) 또는 클러스터를 그린다.
+    function render() {
+        if (!map) return;
+        const zoom = map.getZoom(), bounds = map.getBounds();
+        clusterMarkers.forEach(m => m.setMap(null)); clusterMarkers = [];
+
+        if (zoom >= DETAIL_ZOOM) {
+            const cell = (360 / (256 * Math.pow(2, zoom))) * 64;   // 화면 ~64px 격자(겹침 완화)
+            const occupied = new Set();
+            shown.forEach(n => {
+                const ll = new naver.maps.LatLng(n.course.pos[0], n.course.pos[1]);
+                if (!bounds.hasLatLng(ll)) { hide(n); return; }
+                const key = Math.round(n.course.pos[1] / cell) + ':' + Math.round(n.course.pos[0] / cell);
+                if (occupied.has(key)) { hide(n); return; }   // 같은 칸 1개만(밀집 완화)
+                occupied.add(key);
+                showMarker(n, ll);
+            });
+            // 보이지 않는(필터 제외) 노드 정리
+            nodes.forEach(n => { if (shown.indexOf(n) === -1) hide(n); });
+        } else {
+            nodes.forEach(hide);
+            drawClusters(zoom, bounds);
+        }
+    }
+
+    function hide(n) { if (n.marker) n.marker.setMap(null); }
+
+    function showMarker(n, ll) {
+        if (!n.marker) {
+            n.marker = new naver.maps.Marker({
+                position: ll, title: n.course.name,
+                icon: { content:
+                    `<div style="width:14px;height:14px;border-radius:50%;background:#0c8599;border:2.5px solid #fff;
+                        box-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:pointer"></div>`,
+                    anchor: new naver.maps.Point(7, 7) }
+            });
+            naver.maps.Event.addListener(n.marker, 'click', () => openPanel(n.course));
+        }
+        if (n.marker.getMap() !== map) n.marker.setMap(map);
+    }
+
+    function drawClusters(zoom, bounds) {
+        const cell = (360 / (256 * Math.pow(2, zoom))) * 70;
+        const cells = {};
+        shown.forEach(n => {
+            const ll = new naver.maps.LatLng(n.course.pos[0], n.course.pos[1]);
+            if (!bounds.hasLatLng(ll)) return;
+            const gx = Math.round(n.course.pos[1] / cell), gy = Math.round(n.course.pos[0] / cell);
+            const key = gx + ':' + gy;
+            (cells[key] || (cells[key] = { lat: 0, lng: 0, n: 0 }));
+            cells[key].lat += n.course.pos[0]; cells[key].lng += n.course.pos[1]; cells[key].n++;
+        });
+        Object.values(cells).forEach(c => {
+            const lat = c.lat / c.n, lng = c.lng / c.n;
+            const sz = c.n < 10 ? 34 : c.n < 50 ? 42 : c.n < 200 ? 52 : 62;
+            const m = new naver.maps.Marker({
+                position: new naver.maps.LatLng(lat, lng), map,
+                icon: { content:
+                    `<div style="display:flex;align-items:center;justify-content:center;width:${sz}px;height:${sz}px;
+                        border-radius:50%;background:rgba(12,133,153,0.88);color:#fff;font-weight:800;font-size:13px;
+                        border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.35);cursor:pointer">${c.n}</div>`,
+                    anchor: new naver.maps.Point(sz / 2, sz / 2) }
+            });
+            naver.maps.Event.addListener(m, 'click', () => {
+                map.morph(new naver.maps.LatLng(lat, lng), Math.min(map.getZoom() + 3, 16));
+            });
+            clusterMarkers.push(m);
+        });
+    }
+
+    function openPanel(c) {
+        document.getElementById('pSub').textContent =
+            [c.region, c.length ? c.length + 'km' : '', c.duration].filter(Boolean).join(' · ');
+        document.getElementById('pName').textContent = c.name;
+        const stats = `<div class="stats">
+            ${c.length ? `<div class="stat"><div class="v">${c.length}<span style="font-size:11px">km</span></div><div class="k">총길이</div></div>` : ''}
+            ${c.duration ? `<div class="stat"><div class="v" style="font-size:14px">${c.duration}</div><div class="k">소요시간</div></div>` : ''}
+        </div>`;
+        const row = (k, v) => v ? `<div class="row"><span class="rk">${k}</span><span class="rv">${v}</span></div>` : '';
+        const rows = `<div class="rows">
+            ${row('시작', [c.startName, c.start].filter(Boolean).join(' · '))}
+            ${row('종료', [c.endName, c.end].filter(Boolean).join(' · '))}
+            ${row('경로', c.route)}
+            ${row('관리', [c.manager, c.tel].filter(Boolean).join(' · '))}
+        </div>`;
+        const [lat, lng] = c.pos, nm = encodeURIComponent(c.startName || c.name);
+        const nav = `<div class="navbtns">
+            <a class="nb-tmap" href="tmap://route?goalname=${nm}&goalx=${lng}&goaly=${lat}">T맵 길찾기</a>
+            <a class="nb-kakao" href="https://map.kakao.com/link/map/${nm},${lat},${lng}" target="_blank" rel="noopener">카카오맵</a>
+            <a class="nb-naver" href="https://map.naver.com/p/search/${nm}?c=${lng},${lat},16,0,0,0,dh" target="_blank" rel="noopener">네이버</a>
+        </div>`;
+        document.getElementById('pbody').innerHTML =
+            (c.intro ? `<p class="intro">${c.intro}</p>` : '') + stats + rows + nav;
+        document.getElementById('panel').classList.add('open');
+        map.panTo(new naver.maps.LatLng(lat, lng));
+    }
+
+    function closePanel() { document.getElementById('panel').classList.remove('open'); }
+
+    function goToInitialView() {
+        if (!navigator.geolocation) { fitTo(shown); return; }
+        navigator.geolocation.getCurrentPosition(p => {
+            map.setZoom(13);
+            map.setCenter(new naver.maps.LatLng(p.coords.latitude, p.coords.longitude));
+        }, () => fitTo(shown), { timeout: 5000 });
+    }
+
+    function goCurrentPosition() {
+        if (!navigator.geolocation) return alert('현재 위치를 사용할 수 없습니다.');
+        navigator.geolocation.getCurrentPosition(p => {
+            const loc = new naver.maps.LatLng(p.coords.latitude, p.coords.longitude);
+            map.setZoom(14); map.setCenter(loc);
+            if (curPosMarker) curPosMarker.setMap(null);
+            curPosMarker = new naver.maps.Marker({ position: loc, map, zIndex: 1000,
+                icon: { content: '<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px #2563eb"></div>',
+                        anchor: new naver.maps.Point(8, 8) } });
+        }, () => alert('현재 위치를 가져올 수 없습니다.'));
+    }
+
+    function toggleYmenu(e) { e.stopPropagation(); document.getElementById('ymenuPop').classList.toggle('open'); }
+    document.addEventListener('click', () => { const p = document.getElementById('ymenuPop'); if (p) p.classList.remove('open'); });
+
+    function showErr(msg) {
+        document.getElementById('spinner').innerHTML = `<div style="color:#dc2626;font-weight:700;text-align:center;max-width:360px;padding:20px">${msg}</div>`;
+        document.getElementById('spinner').classList.remove('hidden');
+    }
+    </script>
+</body>
+</html>
