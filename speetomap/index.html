@@ -194,6 +194,7 @@
                 <a class="ymi" href="/childmap/"><span class="ico">🏥</span>어린이병원 여지도</a>
                 <a class="ymi" href="/runningmap/"><span class="ico">🏃</span>러닝코스 여지도</a>
                 <a class="ymi" href="/incomemap/"><span class="ico">💰</span>소득 여지도</a>
+                <a class="ymi" href="/pharmacymap/"><span class="ico">💊</span>약국 여지도</a>
             </div>
         </div>
         <div class="controls" id="chips">
@@ -216,7 +217,7 @@
 
     <div id="hint"></div>
     <button class="geo-btn" onclick="goCurrentPosition()" title="현재 위치">◎</button>
-    <div class="src-credit">데이터 · 동행복권 복권 판매점</div>
+    <div class="src-credit" id="srcCredit">데이터 · 동행복권 복권 판매점</div>
 
     <div id="spinner">
         <div class="loader"><div class="ring"></div><div>판매점 데이터를 불러오는 중…</div></div>
@@ -275,6 +276,7 @@
                     return s;
                 });
                 document.getElementById('spinner').classList.add('hidden');
+                updateCredit();      // 데이터에서 기준(확인)일 자동 표기
                 refresh();
                 goToInitialView();   // 현재 위치로 이동(실패 시 기본 위치)
             })
@@ -283,6 +285,20 @@
                 document.getElementById('spinner').innerHTML =
                     '<div style="color:#e74c3c;font-weight:700">데이터를 불러오지 못했습니다.</div>';
             });
+    }
+
+    // 데이터의 확인일(date)에서 기준 시점을 자동 산출해 우측 하단 출처에 표기.
+    // 여러 지역이 서로 다른 시점에 수집됐으므로 '최신 확인일'을 보여주고,
+    // 일부만 최신이면 '일부 지역 과거 자료'를 덧붙인다(재크롤하면 자동 갱신됨).
+    function updateCredit() {
+        const el = document.getElementById('srcCredit');
+        if (!el) return;
+        const dates = stores.map(s => s.date).filter(Boolean);
+        if (!dates.length) { el.textContent = '데이터 · 동행복권 복권 판매점'; return; }
+        const latest = dates.reduce((a, b) => (a > b ? a : b));
+        const allFresh = dates.length === stores.length;
+        el.textContent = `데이터 · 동행복권 · ${latest} 확인`
+            + (allFresh ? '' : ' · 일부 지역 과거 자료');
     }
 
     // 켜진 종류 중 하나라도 취급하면 마커를 표시(OR)
