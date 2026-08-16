@@ -107,7 +107,7 @@
             <span class="chip" id="chipOpen"><span class="sw"></span>지금 영업중</span>
             <span class="chip" id="chipSun"><span class="sw"></span>일요일 영업</span>
             <span class="chip" id="chipHol"><span class="sw"></span>공휴일 영업</span>
-            <select id="guSel"><option value="">전체</option></select>
+            <select id="citySel" title="시/군 선택"><option value="">시/군…</option></select>
             <input type="search" id="search" placeholder="약국 검색…">
             <span id="count"></span>
         </div>
@@ -135,7 +135,8 @@
 
     let map, meta = null, items = [], infoWindow, curPosMarker = null;
     let clusterMarkers = [], idleTimer = null;
-    let filters = { open:false, sun:false, hol:false, gu:'' };
+    let filters = { open:false, sun:false, hol:false };
+    let cities = [], cityCache = {}, currentCity = '';   // 시별 lazy-load
     let NOW = new Date();                 // 렌더 기준 시각
     let TODAY_KEY = '월', IS_HOL = false;
     const DETAIL_ZOOM = 14;
@@ -210,36 +211,98 @@
         return { code:'closed', color:COLOR.closed, label:`영업종료`, sub:hrs };
     }
 
+    // 시/군 목록(index.json)만 먼저 받고, 실제 약국 데이터는 선택한 시 하나만
+    // 필요할 때 받아온다(lazy-load). 경기 전체(6천여 곳)를 한 번에 그리지 않아 빠르다.
     function loadData() {
-        fetch('./pharmacy-map.json')
+        fetch('./data/index.json')
             .then(r => { if (!r.ok) throw new Error('네트워크 오류'); return r.json(); })
             .then(d => {
                 meta = d.meta || {};
-                const data = (d.데이터 || d).filter(s => Array.isArray(s.pos));
+                cities = d.cities || [];
                 computeToday();
-                buildGu(data);
-                buildMarkers(data);
                 bindChips();
-                goToInitialView();
-                document.getElementById('spinner').classList.add('hidden');
+                populateCitySel();
                 const ref = meta['생성일'] || '';
                 document.getElementById('srcCredit').textContent =
                     `데이터 · 국립중앙의료원 E-Gen(대한약사회 영업시간)${ref ? ' · ' + ref + ' 수집' : ''}`;
+                pickInitialCity();   // 현재 위치에서 가까운 시(없으면 안양시)부터 표시
             })
             .catch(e => { console.error(e); showErr('데이터를 불러오지 못했습니다.'); });
     }
 
-    function guOf(s) {
-        const a = s.addr || '';
-        const m = a.match(/(만안구|동안구)/);
-        return m ? m[1] : (s.지역 || '');
+    function populateCitySel() {
+        const sel = document.getElementById('citySel');
+        cities.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c.name; o.textContent = `${c.name} (${c.count})`;
+            sel.appendChild(o);
+        });
+        sel.addEventListener('change', () => { if (sel.value) loadCity(sel.value, true); });
     }
 
-    function buildGu(data) {
-        const gus = [...new Set(data.map(guOf))].filter(Boolean).sort();
-        const sel = document.getElementById('guSel');
-        gus.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; sel.appendChild(o); });
-        sel.addEventListener('change', () => { filters.gu = sel.value; infoWindow.close(); applyFilter(true); });
+    // 현재 위치가 경기 안이면 가장 가까운 시, 아니면 안양시(없으면 첫 시)를 기본 표시
+    function pickInitialCity() {
+        const fallback = (cities.find(c => c.name === '안양시') || cities[0] || {}).name;
+        if (!navigator.geolocation) { if (fallback) loadCity(fallback, true); return; }
+        let done = false;
+        const go = name => { if (!done && name) { done = true; loadCity(name, true); } };
+        navigator.geolocation.getCurrentPosition(
+            p => {
+                const la = p.coords.latitude, lo = p.coords.longitude;
+                let best = null, bd = Infinity;
+                for (const c of cities) {
+                    if (!c.center) continue;
+                    const d = (c.center[0]-la)**2 + (c.center[1]-lo)**2;
+                    if (d < bd) { bd = d; best = c; }
+                }
+                // 대략 경기권(중심에서 ~0.6도, ≈60km) 안일 때만 근접 시, 아니면 폴백
+                go(best && bd < 0.36 ? best.name : fallback);
+                if (best && bd < 0.36) placeCurPos(new naver.maps.LatLng(la, lo));
+            },
+            () => go(fallback),
+            { timeout: 6000, maximumAge: 600000 }
+        );
+    }
+
+    // 선택한 시의 약국 데이터를 받아(캐시) 마커를 그린다.
+    function loadCity(name, fit) {
+        const info = cities.find(c => c.name === name);
+        if (!info) return;
+        currentCity = name;
+        document.getElementById('citySel').value = name;
+        infoWindow.close();
+        clearMap();                       // 이전 시 마커·클러스터 제거
+        const render = data => {
+            buildMarkers(data);
+            document.getElementById('spinner').classList.add('hidden');
+            frameToItems();
+            if (fit === false) applyFilter(false);
+        };
+        if (cityCache[name]) { render(cityCache[name]); return; }
+        document.getElementById('count').textContent = '불러오는 중…';
+        fetch('./data/' + encodeURIComponent(info.file))
+            .then(r => { if (!r.ok) throw new Error('네트워크 오류'); return r.json(); })
+            .then(arr => {
+                const data = arr.filter(s => Array.isArray(s.pos));
+                cityCache[name] = data;
+                render(data);
+            })
+            .catch(e => { console.error(e); document.getElementById('count').textContent = '불러오기 실패'; });
+    }
+
+    function clearMap() {
+        for (const it of items) it.marker.setMap(null);
+        clearClusters();
+        items = [];
+    }
+
+    // 현재 시 마커 전체가 보이도록 프레이밍(비어있으면 무시)
+    function frameToItems() {
+        if (!items.length) return;
+        const b = new naver.maps.LatLngBounds();
+        items.forEach(it => b.extend(it.marker.getPosition()));
+        map.fitBounds(b, { top:70, right:30, bottom:40, left:30 });
+        applyFilter(false);   // fitBounds가 idle을 안 낼 때도 확실히 렌더
     }
 
     // 텍스트 픽셀 폭 어림(한글은 넓게): 앵커를 라벨 중앙에 맞추기 위함
@@ -274,7 +337,7 @@
                 icon: iconFor(st)
             });
             naver.maps.Event.addListener(marker, 'click', () => openInfo(s, marker, st));
-            return { data: s, marker, st, gu: guOf(s) };
+            return { data: s, marker, st };
         });
     }
 
@@ -291,7 +354,6 @@
     }
 
     function passes(it) {
-        if (filters.gu && it.gu !== filters.gu) return false;
         if (filters.open && !(it.st.code === 'open' || it.st.code === 'soon')) return false;
         if (filters.sun && !(it.data.hours && it.data.hours['일'])) return false;
         if (filters.hol && !(it.data.hours && it.data.hours['공휴일'])) return false;
@@ -396,7 +458,7 @@
         const hit = items.find(it => passes(it) && it.data.title.includes(q))
             || items.find(it => it.data.title.includes(q));
         if (hit) { map.setZoom(16); map.panTo(hit.marker.getPosition()); hit.marker.setMap(map); openInfo(hit.data, hit.marker, hit.st); }
-        else alert('검색 결과가 없습니다: ' + q);
+        else alert(`'${currentCity}'에서 검색 결과가 없습니다: ${q}\n(다른 시/군이면 상단에서 먼저 선택하세요)`);
     });
 
     function placeCurPos(loc) {
@@ -412,26 +474,6 @@
             const loc = new naver.maps.LatLng(p.coords.latitude, p.coords.longitude);
             map.setZoom(15); map.setCenter(loc); placeCurPos(loc);
         }, () => alert('현재 위치를 가져올 수 없습니다.'));
-    }
-
-    // 안양시 데이터라 기본은 안양 전역, 사용자가 안양 근처면 현재 위치로 줌인
-    function goToInitialView() {
-        const b = new naver.maps.LatLngBounds();
-        items.forEach(it => b.extend(it.marker.getPosition()));
-        if (items.length) map.fitBounds(b, { top:70, right:30, bottom:40, left:30 });
-        applyFilter(false);   // fitBounds가 이동을 안 만들어 idle이 안 뜰 때도 확실히 렌더
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(
-            p => {
-                const lat = p.coords.latitude, lng = p.coords.longitude;
-                // 안양 대략 범위 안일 때만 현재 위치로(멀리 있으면 안양 전역 유지)
-                if (lat > 37.34 && lat < 37.46 && lng > 126.87 && lng < 127.0) {
-                    const loc = new naver.maps.LatLng(lat, lng);
-                    map.setCenter(loc); map.setZoom(15); placeCurPos(loc);
-                }
-            },
-            () => {}, { timeout: 6000, maximumAge: 600000 }
-        );
     }
 
     function toggleYmenu(e) { e.stopPropagation(); document.getElementById('ymenuPop').classList.toggle('open'); }
