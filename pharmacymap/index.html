@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JS10ZVJZKX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JS10ZVJZKX');
+    </script>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>약국 여지도 — 지금 문 연 약국·영업시간</title>
+    <style>
+        :root { --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --accent:#099268;
+            --open:#2f9e44; --soon:#f08c00; --closed:#adb5bd; }
+        * { box-sizing:border-box; }
+        html, body { margin:0; padding:0; height:100%;
+            font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif; color:var(--ink); }
+        #map { position:fixed; top:0; left:0; width:100vw; height:100vh; }
+
+        #header { position:fixed; top:0; left:0; right:0; z-index:30; display:flex; align-items:center; gap:12px;
+            flex-wrap:wrap; padding:10px 16px; background:rgba(255,255,255,0.96); box-shadow:0 1px 8px rgba(0,0,0,0.08); backdrop-filter:blur(6px); }
+        #count { font-size:12.5px; color:var(--muted); font-weight:600; white-space:nowrap; }
+        .controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .chip { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px; cursor:pointer;
+            font-size:12.5px; font-weight:700; border:1.5px solid var(--line); background:#fff; color:var(--muted); user-select:none; opacity:.6; }
+        .chip .sw { width:9px; height:9px; border-radius:50%; }
+        .chip.on { opacity:1; color:#fff; border-color:var(--accent); background:var(--accent); }
+        .chip.on .sw { background:#fff !important; }
+        select { font-size:13px; padding:6px 10px; border:1.5px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); outline:none; }
+        select:focus { border-color:var(--accent); }
+        input[type=search] { font-size:13px; padding:6px 10px; border:1.5px solid var(--line); border-radius:8px; width:130px; outline:none; }
+        input:focus { border-color:var(--accent); }
+
+        .ymenu { position:relative; }
+        .ymenu-trigger { display:flex; align-items:center; gap:7px; cursor:pointer; background:none; border:none;
+            padding:2px 4px; font-family:inherit; font-size:18px; font-weight:800; letter-spacing:-0.5px; color:var(--ink); }
+        .ymenu-trigger .tk { font-size:17px; } .ymenu-trigger .caret { font-size:11px; color:var(--muted); }
+        .ymenu-pop { position:absolute; top:calc(100% + 9px); left:0; min-width:212px; background:#fff;
+            border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.16); padding:6px; z-index:50; display:none; }
+        .ymenu-pop.open { display:block; }
+        .ymi { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:8px; text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600; }
+        .ymi:hover { background:#f3f4f6; } .ymi.active { background:#e6fcf5; color:var(--accent); }
+        .ymi .ico { font-size:16px; width:20px; text-align:center; } .ymi-sep { height:1px; background:var(--line); margin:5px 6px; }
+
+        #legend { position:fixed; left:16px; bottom:16px; z-index:20; background:rgba(255,255,255,0.96);
+            border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.12); padding:11px 13px; font-size:12px; line-height:1.7; }
+        #legend b { font-size:12.5px; } #legend .row { display:flex; align-items:center; gap:7px; }
+        #legend .sw { width:11px; height:11px; border-radius:50%; }
+        #legend .note { margin-top:6px; padding-top:6px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; }
+        #legend .today { font-weight:700; color:var(--ink); }
+        #legend .today .hol { color:#e03131; }
+
+        .iw { min-width:230px; max-width:280px; padding:13px 15px 12px; font-family:inherit; }
+        .iw .name { font-size:16px; font-weight:800; letter-spacing:-0.4px; padding-right:6px; }
+        .iw .status { display:inline-block; margin-top:8px; font-size:13px; font-weight:800; padding:4px 10px; border-radius:999px; color:#fff; }
+        .iw .sub { font-size:12px; color:var(--muted); font-weight:600; margin-top:5px; }
+        .iw .addr { font-size:12px; color:#374151; margin:9px 0 4px; line-height:1.45; }
+        .iw a.tel { display:inline-block; font-size:13px; font-weight:700; color:var(--accent); text-decoration:none; margin-top:2px; }
+        .iw table.hrs { width:100%; border-collapse:collapse; margin-top:10px; font-size:11.5px; }
+        .iw table.hrs td { padding:2px 0; color:#374151; }
+        .iw table.hrs td.d { color:var(--muted); width:34px; font-weight:600; }
+        .iw table.hrs tr.now td { color:var(--accent); font-weight:800; }
+        .iw table.hrs td.off { color:#c92a2a; }
+        .iw .links { margin-top:11px; display:flex; gap:6px; flex-wrap:wrap; }
+        .iw .links a { font-size:11.5px; font-weight:700; color:#374151; text-decoration:none; border:1px solid var(--line); border-radius:7px; padding:4px 8px; }
+        .iw .links a.tmap { background:#e8126e; border-color:#e8126e; color:#fff; }
+
+        .geo-btn { position:fixed; right:16px; bottom:16px; z-index:20; width:46px; height:46px; border-radius:50%; border:none;
+            cursor:pointer; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,0.18); font-size:20px; color:var(--accent); }
+        .src-credit { position:fixed; bottom:5px; right:70px; z-index:15; font-size:10.5px; color:rgba(31,41,55,0.6);
+            background:rgba(255,255,255,0.7); padding:2px 8px; border-radius:6px; pointer-events:none;
+            max-width:60vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #spinner { position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+            background:rgba(255,255,255,0.85); font-weight:700; color:var(--muted); }
+        #spinner.hidden { display:none; }
+        .ring { width:38px; height:38px; border:4px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin .9s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @media (max-width:640px) { .ymenu-trigger .t { display:none; } input[type=search]{ width:104px; } #legend { display:none; } }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="header">
+        <div class="ymenu">
+            <button class="ymenu-trigger" onclick="toggleYmenu(event)">
+                <span class="tk">💊</span><span class="t">약국 여지도</span><span class="caret">▾</span>
+            </button>
+            <div class="ymenu-pop" id="ymenuPop">
+                <a class="ymi" href="/"><span class="ico">🏠</span>여지도 홈</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi" href="/speetomap/"><span class="ico">🎟️</span>스피또 여지도</a>
+                <a class="ymi" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
+                <a class="ymi" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
+                <a class="ymi" href="/popmap/"><span class="ico">👶</span>인구 여지도</a>
+                <a class="ymi" href="/foreignmap/"><span class="ico">🌏</span>외국인 여지도</a>
+                <a class="ymi" href="/childmap/"><span class="ico">🏥</span>어린이병원 여지도</a>
+                <a class="ymi" href="/runningmap/"><span class="ico">🏃</span>러닝코스 여지도</a>
+                <a class="ymi" href="/incomemap/"><span class="ico">💰</span>소득 여지도</a>
+                <a class="ymi active" href="/pharmacymap/"><span class="ico">💊</span>약국 여지도</a>
+            </div>
+        </div>
+        <div class="controls">
+            <span class="chip" id="chipOpen"><span class="sw"></span>지금 영업중</span>
+            <span class="chip" id="chipSun"><span class="sw"></span>일요일 영업</span>
+            <span class="chip" id="chipHol"><span class="sw"></span>공휴일 영업</span>
+            <select id="guSel"><option value="">전체</option></select>
+            <input type="search" id="search" placeholder="약국 검색…">
+            <span id="count"></span>
+        </div>
+    </div>
+
+    <div id="legend">
+        <div class="today" id="todayLabel"></div>
+        <div class="row"><span class="sw" style="background:var(--open)"></span> 영업중</div>
+        <div class="row"><span class="sw" style="background:var(--soon)"></span> 곧 마감(1시간 내)</div>
+        <div class="row"><span class="sw" style="background:#748ffc"></span> 영업 전(오늘 예정)</div>
+        <div class="row"><span class="sw" style="background:var(--closed)"></span> 영업종료·휴무</div>
+        <div class="note">영업시간은 대한약사회 제공 · 변동 가능</div>
+    </div>
+
+    <button class="geo-btn" onclick="goCurrentPosition()" title="현재 위치">◎</button>
+    <div class="src-credit" id="srcCredit">데이터 · 국립중앙의료원 E-Gen</div>
+
+    <div id="spinner"><div style="text-align:center"><div class="ring"></div><div style="margin-top:12px">약국 데이터를 불러오는 중…</div></div></div>
+
+    <script type="text/javascript"
+        src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
+    <script>
+    const DAY_ORDER = ['월','화','수','목','금','토','일','공휴일'];
+    const COLOR = { open:'#2f9e44', soon:'#f08c00', closed:'#adb5bd', before:'#748ffc' };
+
+    let map, meta = null, items = [], infoWindow, curPosMarker = null;
+    let clusterMarkers = [], idleTimer = null;
+    let filters = { open:false, sun:false, hol:false, gu:'' };
+    let NOW = new Date();                 // 렌더 기준 시각
+    let TODAY_KEY = '월', IS_HOL = false;
+    const DETAIL_ZOOM = 14;
+
+    window.navermap_authFailure = () => showErr('네이버 지도 인증 실패: 현재 주소가 등록돼 있어야 합니다.');
+
+    function initMap() {
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(37.394, 126.956), zoom: 13,
+            zoomControl: true, zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
+        });
+        infoWindow = new naver.maps.InfoWindow({ borderWidth: 0, anchorSize: new naver.maps.Size(12, 12), backgroundColor: '#fff' });
+        naver.maps.Event.addListener(map, 'click', () => infoWindow.close());
+        naver.maps.Event.addListener(map, 'idle', () => {
+            clearTimeout(idleTimer); idleTimer = setTimeout(() => applyFilter(false), 150);
+        });
+        loadData();
+    }
+
+    // ── 시각/공휴일 판정 ──────────────────────────────────────────────
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function ymd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+    function hm(s){ return parseInt(s.slice(0,2),10)*60 + parseInt(s.slice(2),10); }   // HHMM → 분
+    function fmtHM(s){ return s ? s.slice(0,2)+':'+s.slice(2) : ''; }
+    function fmtDur(min){
+        if (min >= 1440) return '';
+        const h = Math.floor(min/60), m = min%60;
+        return ((h ? h+'시간 ' : '') + (m ? m+'분' : (h?'':'0분'))).trim();
+    }
+
+    function computeToday() {
+        NOW = new Date();
+        const t = ymd(NOW);
+        IS_HOL = (meta['공휴일'] || []).includes(t);
+        TODAY_KEY = IS_HOL ? '공휴일' : ['일','월','화','수','목','금','토'][NOW.getDay()];
+        const wd = ['일','월','화','수','목','금','토'][NOW.getDay()];
+        document.getElementById('todayLabel').innerHTML =
+            `오늘 ${NOW.getMonth()+1}/${NOW.getDate()}(${wd})` +
+            (IS_HOL ? ' <span class="hol">· 공휴일</span>' : '') +
+            ` ${pad(NOW.getHours())}:${pad(NOW.getMinutes())} 기준`;
+    }
+
+    // 약국의 '지금' 영업상태 계산
+    function statusOf(s) {
+        const h = s.hours ? s.hours[TODAY_KEY] : null;
+        if (!h || !h[0] || !h[1]) return { code:'closed', color:COLOR.closed,
+            label: TODAY_KEY==='공휴일' ? '오늘 휴무 (공휴일)' : '오늘 휴무', sub:'' };
+        const start = hm(h[0]), close = hm(h[1]);
+        const cur = NOW.getHours()*60 + NOW.getMinutes();
+        const is24 = (h[0]==='0000' && (h[1]==='2400' || h[1]==='0000')) || h[0]===h[1];
+        if (is24) return { code:'open', color:COLOR.open, label:'24시간 영업중', sub:'오늘 24시간' };
+
+        let open, toClose;
+        if (close <= start) {           // 자정 넘겨 영업
+            open = cur >= start || cur < close;
+            toClose = (cur >= start ? close + 1440 : close) - cur;
+        } else {
+            open = cur >= start && cur < close;
+            toClose = close - cur;
+        }
+        const hrs = `오늘 ${fmtHM(h[0])}~${fmtHM(h[1])}`;
+        if (open) {
+            if (toClose <= 60) return { code:'soon', color:COLOR.soon,
+                label:`곧 마감 · ${fmtHM(h[1])}`, sub:`${fmtDur(toClose)} 후 마감 · ${hrs}`,
+                badge:`${fmtDur(toClose)}뒤 마감` };
+            return { code:'open', color:COLOR.open,
+                label:`영업중 · ${fmtHM(h[1])} 마감`, sub:`${fmtDur(toClose)} 후 마감 · ${hrs}` };
+        }
+        if (cur < start) { const wait = start - cur; return { code:'before', color:COLOR.before,
+            label:`영업 전 · ${fmtHM(h[0])} 오픈`, sub:`${fmtDur(wait)} 뒤 오픈 · ${hrs}`,
+            badge:`${fmtHM(h[0])} 오픈·${fmtDur(wait)}뒤` }; }
+        return { code:'closed', color:COLOR.closed, label:`영업종료`, sub:hrs };
+    }
+
+    function loadData() {
+        fetch('./pharmacy-map.json')
+            .then(r => { if (!r.ok) throw new Error('네트워크 오류'); return r.json(); })
+            .then(d => {
+                meta = d.meta || {};
+                const data = (d.데이터 || d).filter(s => Array.isArray(s.pos));
+                computeToday();
+                buildGu(data);
+                buildMarkers(data);
+                bindChips();
+                goToInitialView();
+                document.getElementById('spinner').classList.add('hidden');
+                const ref = meta['생성일'] || '';
+                document.getElementById('srcCredit').textContent =
+                    `데이터 · 국립중앙의료원 E-Gen(대한약사회 영업시간)${ref ? ' · ' + ref + ' 수집' : ''}`;
+            })
+            .catch(e => { console.error(e); showErr('데이터를 불러오지 못했습니다.'); });
+    }
+
+    function guOf(s) {
+        const a = s.addr || '';
+        const m = a.match(/(만안구|동안구)/);
+        return m ? m[1] : (s.지역 || '');
+    }
+
+    function buildGu(data) {
+        const gus = [...new Set(data.map(guOf))].filter(Boolean).sort();
+        const sel = document.getElementById('guSel');
+        gus.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; sel.appendChild(o); });
+        sel.addEventListener('change', () => { filters.gu = sel.value; infoWindow.close(); applyFilter(true); });
+    }
+
+    // 텍스트 픽셀 폭 어림(한글은 넓게): 앵커를 라벨 중앙에 맞추기 위함
+    function textW(t) {
+        let w = 0;
+        for (const ch of t) w += /[0-9:.\s]/.test(ch) ? 6.4 : (/[가-힣]/.test(ch) ? 12 : 7);
+        return w;
+    }
+    function dotIcon(color) {
+        return { content: `<div style="width:15px;height:15px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+            background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);cursor:pointer"></div>`,
+            anchor: new naver.maps.Point(8, 15) };
+    }
+    function pillIcon(color, txt) {
+        const w = Math.round(textW(txt) + 18), h = 21;
+        return { content: `<div style="white-space:nowrap;height:${h}px;line-height:${h - 3}px;padding:0 8px;
+            border-radius:11px;background:${color};color:#fff;font-size:11px;font-weight:800;
+            border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.45);cursor:pointer">${txt}</div>`,
+            anchor: new naver.maps.Point(Math.round(w / 2), Math.round(h / 2)) };
+    }
+    function iconFor(st) {
+        return (st.badge && (st.code === 'soon' || st.code === 'before'))
+            ? pillIcon(st.color, st.badge) : dotIcon(st.color);
+    }
+
+    function buildMarkers(data) {
+        items = data.map(s => {
+            const st = statusOf(s);
+            const marker = new naver.maps.Marker({
+                position: new naver.maps.LatLng(s.pos[0], s.pos[1]), title: s.title,
+                zIndex: st.code === 'soon' ? 120 : st.code === 'before' ? 110 : 100,
+                icon: iconFor(st)
+            });
+            naver.maps.Event.addListener(marker, 'click', () => openInfo(s, marker, st));
+            return { data: s, marker, st, gu: guOf(s) };
+        });
+    }
+
+    function bindChips() {
+        const map3 = { chipOpen:'open', chipSun:'sun', chipHol:'hol' };
+        Object.keys(map3).forEach(id => {
+            document.getElementById(id).addEventListener('click', () => {
+                const k = map3[id];
+                filters[k] = !filters[k];
+                document.getElementById(id).classList.toggle('on', filters[k]);
+                infoWindow.close(); applyFilter(false);
+            });
+        });
+    }
+
+    function passes(it) {
+        if (filters.gu && it.gu !== filters.gu) return false;
+        if (filters.open && !(it.st.code === 'open' || it.st.code === 'soon')) return false;
+        if (filters.sun && !(it.data.hours && it.data.hours['일'])) return false;
+        if (filters.hol && !(it.data.hours && it.data.hours['공휴일'])) return false;
+        return true;
+    }
+
+    function applyFilter(fit) {
+        if (!items.length) return;
+        const filtered = items.filter(passes);
+        document.getElementById('count').textContent = `${filtered.length.toLocaleString()}곳`;
+        if (fit && filtered.length) {
+            const b = new naver.maps.LatLngBounds();
+            filtered.forEach(it => b.extend(it.marker.getPosition()));
+            map.fitBounds(b, { top:70, right:30, bottom:40, left:30 });
+            return;
+        }
+        if (map.getZoom() >= DETAIL_ZOOM) {
+            clearClusters();
+            const b = map.getBounds();
+            for (const it of items)
+                it.marker.setMap(passes(it) && b.hasLatLng(it.marker.getPosition()) ? map : null);
+        } else {
+            for (const it of items) if (it.marker.getMap()) it.marker.setMap(null);
+            showClusters(filtered);
+        }
+    }
+
+    function showClusters(list) {
+        clearClusters();
+        const zoom = map.getZoom();
+        const cell = (360 / (256 * Math.pow(2, zoom))) * 70;
+        const buckets = new Map();
+        for (const it of list) {
+            const p = it.data.pos;
+            const key = Math.floor(p[1] / cell) + '_' + Math.floor(p[0] / cell);
+            let b = buckets.get(key);
+            if (!b) { b = { la:0, lo:0, n:0 }; buckets.set(key, b); }
+            b.la += p[0]; b.lo += p[1]; b.n++;
+        }
+        for (const b of buckets.values())
+            clusterMarkers.push(makeCluster(b.la / b.n, b.lo / b.n, b.n, zoom));
+    }
+
+    function makeCluster(lat, lng, count, zoom) {
+        const r = Math.round(Math.min(28, 14 + Math.sqrt(count) * 1.7));
+        const d = r * 2, fs = count >= 100 ? 12 : 13;
+        const content = `<div style="width:${d}px;height:${d}px;border-radius:50%;box-sizing:border-box;
+            background:#099268e0;border:2.5px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,0.35);
+            color:#fff;font-weight:800;font-size:${fs}px;display:flex;align-items:center;justify-content:center;
+            cursor:pointer">${count}</div>`;
+        const m = new naver.maps.Marker({ position: new naver.maps.LatLng(lat, lng), map, zIndex: 200,
+            icon: { content, anchor: new naver.maps.Point(r, r) } });
+        naver.maps.Event.addListener(m, 'click', () => {
+            const t = Math.min(zoom + 3, DETAIL_ZOOM + 1);
+            if (map.morph) map.morph(new naver.maps.LatLng(lat, lng), t);
+            else { map.setCenter(new naver.maps.LatLng(lat, lng)); map.setZoom(t); }
+        });
+        return m;
+    }
+
+    function clearClusters() { for (const m of clusterMarkers) m.setMap(null); clusterMarkers = []; }
+
+    function hoursTable(s) {
+        let rows = '';
+        for (const d of DAY_ORDER) {
+            const h = s.hours ? s.hours[d] : null;
+            const isNow = d === TODAY_KEY;
+            const val = (h && h[0] && h[1]) ? `${fmtHM(h[0])} ~ ${fmtHM(h[1])}` : '<span>휴무</span>';
+            const offCls = (h && h[0] && h[1]) ? '' : ' off';
+            rows += `<tr class="${isNow ? 'now' : ''}"><td class="d">${d}</td><td class="${offCls.trim()}">${val}</td></tr>`;
+        }
+        return `<table class="hrs">${rows}</table>`;
+    }
+
+    function openInfo(s, marker, st) {
+        st = st || statusOf(s);
+        const tel = s.tel ? `<a class="tel" href="tel:${s.tel}">☎ ${s.tel}</a>` : '';
+        const lat = s.pos[0], lng = s.pos[1], gname = encodeURIComponent(s.title || '약국');
+        const tmap = `tmap://route?goalname=${gname}&goalx=${lng}&goaly=${lat}`;
+        const kakao = `https://map.kakao.com/link/map/${gname},${lat},${lng}`;
+        const nmap = `https://map.naver.com/p/search/${gname}?c=${lng},${lat},16,0,0,0,dh`;
+        infoWindow.setContent(
+            `<div class="iw">
+                <div class="name">${s.title || ''}</div>
+                <span class="status" style="background:${st.color}">${st.label}</span>
+                ${st.sub ? `<div class="sub">${st.sub}</div>` : ''}
+                <div class="addr">${s.addr || ''}</div>
+                ${tel}
+                ${hoursTable(s)}
+                <div class="links">
+                    <a class="tmap" href="${tmap}">🧭 T맵 길찾기</a>
+                    <a href="${nmap}" target="_blank" rel="noopener">네이버지도</a>
+                    <a href="${kakao}" target="_blank" rel="noopener">카카오맵</a>
+                </div>
+            </div>`);
+        infoWindow.open(map, marker);
+    }
+
+    document.getElementById('search').addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        const q = e.target.value.trim(); if (!q) return;
+        const hit = items.find(it => passes(it) && it.data.title.includes(q))
+            || items.find(it => it.data.title.includes(q));
+        if (hit) { map.setZoom(16); map.panTo(hit.marker.getPosition()); hit.marker.setMap(map); openInfo(hit.data, hit.marker, hit.st); }
+        else alert('검색 결과가 없습니다: ' + q);
+    });
+
+    function placeCurPos(loc) {
+        if (curPosMarker) curPosMarker.setMap(null);
+        curPosMarker = new naver.maps.Marker({ position: loc, map, zIndex: 1000,
+            icon: { content: '<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px #2563eb"></div>',
+                    anchor: new naver.maps.Point(8, 8) } });
+    }
+
+    function goCurrentPosition() {
+        if (!navigator.geolocation) return alert('현재 위치를 사용할 수 없습니다.');
+        navigator.geolocation.getCurrentPosition(p => {
+            const loc = new naver.maps.LatLng(p.coords.latitude, p.coords.longitude);
+            map.setZoom(15); map.setCenter(loc); placeCurPos(loc);
+        }, () => alert('현재 위치를 가져올 수 없습니다.'));
+    }
+
+    // 안양시 데이터라 기본은 안양 전역, 사용자가 안양 근처면 현재 위치로 줌인
+    function goToInitialView() {
+        const b = new naver.maps.LatLngBounds();
+        items.forEach(it => b.extend(it.marker.getPosition()));
+        if (items.length) map.fitBounds(b, { top:70, right:30, bottom:40, left:30 });
+        applyFilter(false);   // fitBounds가 이동을 안 만들어 idle이 안 뜰 때도 확실히 렌더
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            p => {
+                const lat = p.coords.latitude, lng = p.coords.longitude;
+                // 안양 대략 범위 안일 때만 현재 위치로(멀리 있으면 안양 전역 유지)
+                if (lat > 37.34 && lat < 37.46 && lng > 126.87 && lng < 127.0) {
+                    const loc = new naver.maps.LatLng(lat, lng);
+                    map.setCenter(loc); map.setZoom(15); placeCurPos(loc);
+                }
+            },
+            () => {}, { timeout: 6000, maximumAge: 600000 }
+        );
+    }
+
+    function toggleYmenu(e) { e.stopPropagation(); document.getElementById('ymenuPop').classList.toggle('open'); }
+    document.addEventListener('click', () => { const p = document.getElementById('ymenuPop'); if (p) p.classList.remove('open'); });
+
+    function showErr(msg) {
+        document.getElementById('spinner').innerHTML = `<div style="color:#dc2626;font-weight:700;text-align:center;max-width:360px;padding:20px">${msg}</div>`;
+        document.getElementById('spinner').classList.remove('hidden');
+    }
+    </script>
+</body>
+</html>
