@@ -232,17 +232,30 @@
 
     function populateCitySel() {
         const sel = document.getElementById('citySel');
+        // 시/도(이름 첫 토큰)별 optgroup 으로 묶는다. 예: '경기 수원시' → 그룹 '경기'.
+        const byProv = {};
         cities.forEach(c => {
-            const o = document.createElement('option');
-            o.value = c.name; o.textContent = `${c.name} (${c.count})`;
-            sel.appendChild(o);
+            const sp = c.name.indexOf(' ');
+            const prov = sp > 0 ? c.name.slice(0, sp) : c.name;
+            (byProv[prov] = byProv[prov] || []).push(c);
+        });
+        Object.keys(byProv).forEach(prov => {
+            const og = document.createElement('optgroup'); og.label = prov;
+            byProv[prov].forEach(c => {
+                const o = document.createElement('option');
+                o.value = c.name;                                  // 전체 지역키(로드 시 사용)
+                const sub = c.name.slice(prov.length).trim() || c.name;
+                o.textContent = `${sub} (${c.count})`;             // 표시는 시/군구 + 건수
+                og.appendChild(o);
+            });
+            sel.appendChild(og);
         });
         sel.addEventListener('change', () => { if (sel.value) loadCity(sel.value, true); });
     }
 
     // 현재 위치가 경기 안이면 가장 가까운 시, 아니면 안양시(없으면 첫 시)를 기본 표시
     function pickInitialCity() {
-        const fallback = (cities.find(c => c.name === '안양시') || cities[0] || {}).name;
+        const fallback = (cities.find(c => c.name.includes('안양')) || cities[0] || {}).name;
         if (!navigator.geolocation) { if (fallback) loadCity(fallback, true); return; }
         let done = false;
         const go = name => { if (!done && name) { done = true; loadCity(name, true); } };
