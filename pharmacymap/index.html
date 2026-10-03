@@ -9,9 +9,12 @@
       gtag('js', new Date());
       gtag('config', 'G-JS10ZVJZKX');
     </script>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9952445718207134" crossorigin="anonymous"></script>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>약국 여지도 — 지금 문 연 약국·영업시간</title>
+    <meta name="description" content="지금 문 연 약국을 한눈에 보는 지도. 요일·공휴일별 영업시간과 마감까지 남은 시간을 확인하세요.">
     <style>
         :root { --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --accent:#099268;
             --open:#2f9e44; --soon:#f08c00; --closed:#adb5bd; }
@@ -79,6 +82,7 @@
         .ring { width:38px; height:38px; border:4px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin .9s linear infinite; }
         @keyframes spin { to { transform:rotate(360deg); } }
         @media (max-width:640px) { .ymenu-trigger .t { display:none; } input[type=search]{ width:104px; } #legend { display:none; } }
+        .ymenu-pop { max-height:calc(100vh - 70px); overflow-y:auto; }
     </style>
 </head>
 <body>
@@ -101,6 +105,10 @@
                 <a class="ymi" href="/runningmap/"><span class="ico">🏃</span>러닝코스 여지도</a>
                 <a class="ymi" href="/incomemap/"><span class="ico">💰</span>소득 여지도</a>
                 <a class="ymi active" href="/pharmacymap/"><span class="ico">💊</span>약국 여지도</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi" href="/about/"><span class="ico">ℹ️</span>여지도 소개</a>
+                <a class="ymi" href="/privacy/"><span class="ico">🔒</span>개인정보 처리방침</a>
+                <a class="ymi" href="/contact/"><span class="ico">✉️</span>문의</a>
             </div>
         </div>
         <div class="controls">

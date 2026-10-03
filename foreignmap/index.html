@@ -9,9 +9,12 @@
       gtag('js', new Date());
       gtag('config', 'G-JS10ZVJZKX');
     </script>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9952445718207134" crossorigin="anonymous"></script>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>외국인 여지도 — 시군구별 외국인 인구</title>
+    <meta name="description" content="시군구별 외국인 인구를 색으로 보여 주는 지도. 국적별·체류자격별 분포까지 한눈에 확인하세요.">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root { --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --accent:#0d9488; }
@@ -92,6 +95,7 @@
             #panel { width:100%; max-width:100%; height:80%; top:auto; bottom:0; border-radius:18px 18px 0 0;
                 transform:translateY(105%); } #panel.open { transform:translateY(0); }
         }
+        .ymenu-pop { max-height:calc(100vh - 70px); overflow-y:auto; }
     </style>
 </head>
 <body>
@@ -114,6 +118,10 @@
                 <a class="ymi" href="/runningmap/"><span class="ico">🏃</span>러닝코스 여지도</a>
                 <a class="ymi" href="/incomemap/"><span class="ico">💰</span>소득 여지도</a>
                 <a class="ymi" href="/pharmacymap/"><span class="ico">💊</span>약국 여지도</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi" href="/about/"><span class="ico">ℹ️</span>여지도 소개</a>
+                <a class="ymi" href="/privacy/"><span class="ico">🔒</span>개인정보 처리방침</a>
+                <a class="ymi" href="/contact/"><span class="ico">✉️</span>문의</a>
             </div>
         </div>
         <span id="count"></span>

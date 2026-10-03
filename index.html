@@ -9,9 +9,12 @@
       gtag('js', new Date());
       gtag('config', 'G-JS10ZVJZKX');
     </script>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9952445718207134" crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>여지도 — 지도로 보는 우리 동네 정보</title>
+    <meta name="description" content="여지도는 복권 판매점, 학군, 인구, 소득, 어린이병원, 약국, 러닝코스 등 우리 동네 정보를 지도로 보여 주는 무료 지도 모음입니다.">
     <style>
         :root {
             --ink: #1f2937; --muted: #6b7280; --line: #e8eaf0;
@@ -82,10 +85,20 @@
         .card .go .arr { transition: transform .18s; }
         .card:hover .go .arr { transform: translateX(4px); }
 
+        .about {
+            margin-top: 36px; padding: 24px 24px 22px; background: #fff;
+            border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .about h2 { margin: 0 0 8px; font-size: 17px; font-weight: 800; letter-spacing: -0.4px; }
+        .about p { margin: 0 0 12px; font-size: 14px; color: var(--muted); line-height: 1.7; }
+        .about a { font-size: 13px; font-weight: 700; color: #4f46e5; text-decoration: none; }
+
         footer {
             text-align: center; margin-top: 48px; font-size: 12.5px; color: var(--muted);
         }
         footer a { color: var(--muted); }
+        footer .links { margin-top: 8px; }
+        footer .sep { margin: 0 6px; }
 
         @media (max-width: 720px) {
             .wrap { padding: 44px 16px 44px; }
@@ -175,8 +188,21 @@
             </a>
         </div>
 
+        <div class="about">
+            <h2>여지도는</h2>
+            <p>
+                흩어져 있는 공공데이터를 지도 위에 올려, 우리 동네 정보를 한눈에 볼 수 있게 만든 지도 모음입니다.
+                복권 판매점, 학교 통계, 인구, 소득, 어린이병원, 약국, 러닝코스까지 — 표로만 공개되어 찾아보기
+                어려운 정보를 주제별 지도로 옮겼습니다. 회원가입이나 앱 설치 없이 무료로 이용할 수 있습니다.
+            </p>
+            <a href="/about/">지도별 안내와 데이터 출처 보기 →</a>
+        </div>
+
         <footer>
             Made by <a href="https://eine.tistory.com/entry/%ED%8F%89%ED%96%89%EB%B4%89-%EB%B0%8F-%EC%B2%A0%EB%B4%89-%EC%A7%80%EB%8F%84-%EA%B0%9C%EB%B0%9C%EA%B8%B0" target="_blank" rel="noopener">Einstrasse</a>
+            <div class="links">
+                <a href="/about/">소개</a><span class="sep">·</span><a href="/privacy/">개인정보 처리방침</a><span class="sep">·</span><a href="/contact/">문의</a>
+            </div>
         </footer>
     </div>
 </body>

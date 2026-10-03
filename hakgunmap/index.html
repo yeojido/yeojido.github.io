@@ -9,9 +9,12 @@
       gtag('js', new Date());
       gtag('config', 'G-JS10ZVJZKX');
     </script>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9952445718207134" crossorigin="anonymous"></script>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>학군여지도 — 학교 통계 지도</title>
+    <meta name="description" content="초·중·고 학교별 학생수, 교원수, 학년별 학생수, 학급당 학생수 통계를 지도와 그래프로 보여 주는 학군 지도.">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
@@ -211,6 +214,7 @@
             #legend { display: none; }
             .geo-btn { bottom: calc(16px); }
         }
+        .ymenu-pop { max-height:calc(100vh - 70px); overflow-y:auto; }
     </style>
 </head>
 <body>
@@ -233,6 +237,10 @@
                 <a class="ymi" href="/runningmap/"><span class="ico">🏃</span>러닝코스 여지도</a>
                 <a class="ymi" href="/incomemap/"><span class="ico">💰</span>소득 여지도</a>
                 <a class="ymi" href="/pharmacymap/"><span class="ico">💊</span>약국 여지도</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi" href="/about/"><span class="ico">ℹ️</span>여지도 소개</a>
+                <a class="ymi" href="/privacy/"><span class="ico">🔒</span>개인정보 처리방침</a>
+                <a class="ymi" href="/contact/"><span class="ico">✉️</span>문의</a>
             </div>
         </div>
         <div class="controls">
