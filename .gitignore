@@ -1,2 +1,12 @@
 # 데이터 크롤러 (로컬 도구 — 사이트에 배포하지 않음)
 data-crawlers/
+"data-cralwer" 
+"data-cralwer" 
+data-cralwer/ 
+"README.md" 
+README.md
+.gitignore 
+CLAUDE.md 
+
+# Playwright MCP 출력물
+.playwright-mcp/

@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JS10ZVJZKX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JS10ZVJZKX');
+    </script>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9952445718207134" crossorigin="anonymous"></script>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>로또 여지도 — 로또 판매점·1등 당첨 명당 지도</title>
+    <meta name="description" content="내 주변 로또 판매점과 역대 1등·2등 당첨 명당을 지도에서 한눈에. 판매점별 회차 당첨 이력(자동·수동), 1등 최다 배출 판매점 순위, 길찾기까지.">
+    <style>
+        :root {
+            --c-lotto: #d12c3f;    /* 로또6/45 */
+            --c-annuity: #f39c12;  /* 연금복권720+ */
+            --c-win: #f5b301;      /* 1등 배출(금) */
+            --c-win2: #9ca3af;     /* 2등(은) */
+            --ink: #1f2937;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+            color: var(--ink);
+        }
+        /* 네이버 지도는 컨테이너 position 을 relative 로 덮어써 inset:0 만으로는
+           높이가 0 으로 붕괴된다. 명시적 100vw/100vh 로 화면을 꽉 채운다. */
+        #map { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+
+        /* ── 헤더 ── */
+        #header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.96);
+            box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+            backdrop-filter: blur(6px);
+        }
+        .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 11px; border-radius: 999px; cursor: pointer;
+            font-size: 12.5px; font-weight: 700; border: 1.5px solid var(--line);
+            background: #fff; color: var(--muted); user-select: none;
+            transition: all .15s; opacity: 0.55;
+        }
+        .chip .sw { width: 9px; height: 9px; border-radius: 50%; }
+        .chip[data-g="lotto"]   .sw { background: var(--c-lotto); }
+        .chip[data-g="annuity"] .sw { background: var(--c-annuity); }
+        .chip.on { opacity: 1; color: #fff; }
+        .chip.on[data-g="lotto"]   { background: var(--c-lotto);   border-color: var(--c-lotto); }
+        .chip.on[data-g="annuity"] { background: var(--c-annuity); border-color: var(--c-annuity); }
+        .chip.on .sw { background: #fff !important; }
+        .chip.mode { opacity: 1; color: #92400e; border-color: #fcd34d; background: #fffbeb; }
+        .chip.mode.on { background: var(--c-win); border-color: var(--c-win); color: #1f2937; }
+        .chip.rank { opacity: 1; color: var(--ink); border-color: var(--line); background: #f9fafb; }
+        .chip.rank:hover { background: #f3f4f6; }
+        .vsep { width: 1px; height: 20px; background: var(--line); }
+        #count { font-size: 12.5px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+
+        /* ── 여지도 전환 메뉴 ── */
+        .ymenu { position: relative; }
+        .ymenu-trigger {
+            display: flex; align-items: center; gap: 7px; cursor: pointer;
+            background: none; border: none; padding: 2px 4px; font-family: inherit;
+            font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: var(--ink);
+        }
+        .ymenu-trigger .tk { font-size: 17px; }
+        .ymenu-trigger .caret { font-size: 11px; color: var(--muted); }
+        .ymenu-pop {
+            position: absolute; top: calc(100% + 9px); left: 0; min-width: 212px;
+            background: #fff; border: 1px solid var(--line); border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.16); padding: 6px; z-index: 50; display: none;
+            max-height: calc(100vh - 70px); overflow-y: auto;
+        }
+        .ymenu-pop.open { display: block; }
+        .ymi {
+            display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 8px;
+            text-decoration: none; color: var(--ink); font-size: 13.5px; font-weight: 600;
+        }
+        .ymi:hover { background: #f3f4f6; }
+        .ymi.active { background: #eef2ff; color: #4f46e5; }
+        .ymi .ico { font-size: 16px; width: 20px; text-align: center; }
+        .ymi-sep { height: 1px; background: var(--line); margin: 5px 6px; }
+
+        /* ── 범례 ── */
+        #legend {
+            position: fixed; left: 16px; bottom: 16px; z-index: 20;
+            background: rgba(255,255,255,0.96); border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12); padding: 11px 13px;
+            font-size: 12px; line-height: 1.75; max-width: 260px;
+        }
+        #legend b { font-size: 12.5px; }
+        #legend .row { display: flex; align-items: center; gap: 7px; }
+        #legend .sw { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+        #legend .wb {
+            display: inline-flex; align-items: center; justify-content: center; flex: none;
+            min-width: 18px; height: 16px; padding: 0 4px; border-radius: 999px;
+            background: var(--c-win); color: #1f2937; font-size: 10px; font-weight: 800;
+        }
+        #legend .note { margin-top: 6px; font-size: 10.5px; color: var(--muted); line-height: 1.5; }
+        #legend .credit {
+            margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--line);
+            font-size: 10.5px; color: var(--muted);
+        }
+        #legend .credit a { color: var(--muted); }
+
+        /* ── 줌 힌트(가운데 알약) ── */
+        #hint {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            z-index: 25; display: none;
+            background: rgba(31,41,55,0.88); color: #fff; font-weight: 600;
+            padding: 11px 18px; border-radius: 999px; font-size: 13.5px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25); pointer-events: none;
+            text-align: center;
+        }
+        #hint.show { display: block; }
+
+        /* 데이터 출처(하단 작게) */
+        .src-credit { position: fixed; bottom: 5px; right: 70px; z-index: 15; font-size: 10.5px;
+            color: rgba(31,41,55,0.6); background: rgba(255,255,255,0.7); padding: 2px 8px; border-radius: 6px;
+            pointer-events: none; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* ── 현재위치 버튼 ── */
+        .geo-btn {
+            position: fixed; right: 16px; bottom: 16px; z-index: 20;
+            width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
+            background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+            font-size: 20px; color: var(--c-lotto);
+        }
+
+        /* ── 스피너 ── */
+        #spinner {
+            position: fixed; inset: 0; z-index: 60; display: flex;
+            align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.85); font-weight: 700; color: var(--muted);
+        }
+        #spinner.hidden { display: none; }
+        .loader { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .loader .ring {
+            width: 38px; height: 38px; border: 4px solid var(--line);
+            border-top-color: var(--c-lotto); border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── InfoWindow 카드 ── */
+        .iw { min-width: 220px; max-width: 280px; padding: 13px 14px 12px; font-family: inherit; }
+        .iw .name { font-size: 15px; font-weight: 800; letter-spacing: -0.4px; }
+        .iw .addr { font-size: 12px; color: var(--muted); margin: 4px 0 8px; line-height: 1.45; }
+        .iw .badges { display: flex; flex-wrap: wrap; gap: 5px; }
+        .iw .badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; color: #fff; }
+        .iw .badge.blotto { background: var(--c-lotto); }
+        .iw .badge.bann { background: var(--c-annuity); }
+        .iw .badge.bout { background: #e5e7eb; color: var(--muted); }
+        .iw .none { font-size: 11.5px; color: var(--muted); }
+        .iw .winsum {
+            margin-top: 9px; padding: 7px 9px; border-radius: 8px; background: #fffbeb;
+            font-size: 12.5px; font-weight: 800; color: #92400e; display: flex; gap: 10px;
+        }
+        .iw .winsum.none { background: #f3f4f6; color: var(--muted); font-weight: 600; }
+        .iw .wins { margin-top: 6px; font-size: 11.5px; color: var(--ink); line-height: 1.6; max-height: 150px; overflow-y: auto; }
+        .iw .wins .r { display: flex; gap: 6px; align-items: baseline; }
+        .iw .wins .rk { font-weight: 800; width: 26px; flex: none; }
+        .iw .wins .rk.r1 { color: #b45309; }
+        .iw .wins .rk.r2 { color: #6b7280; }
+        .iw .wins .dt { color: var(--muted); }
+        .iw .wins .more { color: var(--muted); font-size: 11px; }
+        .iw .links { display: flex; gap: 6px; margin-top: 10px; }
+        .iw .links a {
+            flex: 1; text-align: center; font-size: 11.5px; font-weight: 700; padding: 6px 0;
+            border-radius: 7px; text-decoration: none; color: #fff;
+        }
+        .iw .links .tmap { background: #1e40af; }
+        .iw .links .kakao { background: #f7c600; color: #1f2937; }
+        .iw .links .naver { background: #03c75a; }
+        .iw .date { font-size: 10.5px; color: #9ca3af; margin-top: 8px; }
+
+        /* ── 명당 순위 드로어 ── */
+        #panel {
+            position: fixed; top: 0; right: 0; bottom: 0; width: 360px; max-width: 100vw; z-index: 40;
+            background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,0.14);
+            transform: translateX(100%); transition: transform .22s; display: flex; flex-direction: column;
+        }
+        #panel.open { transform: translateX(0); }
+        .phead { position: relative; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+        .phead h2 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -0.4px; padding-right: 34px; }
+        .phead .sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; padding-right: 34px; }
+        .phead .close {
+            position: absolute; top: 10px; right: 10px; z-index: 5;
+            width: 30px; height: 30px; border-radius: 50%; border: none; background: #f3f4f6;
+            font-size: 16px; cursor: pointer; color: var(--muted);
+        }
+        .pfilter { display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+        .pfilter select {
+            flex: 1; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--line);
+            font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: #fff;
+        }
+        .plist { flex: 1; overflow-y: auto; }
+        .pitem {
+            display: flex; gap: 10px; align-items: center; padding: 10px 16px; cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .pitem:hover { background: #fffbeb; }
+        .pitem .no { width: 24px; flex: none; text-align: center; font-weight: 800; color: var(--muted); font-size: 13px; }
+        .pitem .no.top { color: #b45309; }
+        .pitem .body { flex: 1; min-width: 0; }
+        .pitem .nm { font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pitem .ad { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pitem .w { flex: none; text-align: right; font-size: 12px; line-height: 1.35; }
+        .pitem .w b { color: #b45309; font-size: 14px; }
+        .pitem .w span { color: var(--muted); font-size: 11px; }
+        .pempty { padding: 30px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+        @media (max-width: 640px) {
+            .ymenu-trigger .t { display: none; }
+            #header { gap: 8px; padding: 8px 12px; }
+            .chip { padding: 4px 9px; font-size: 12px; }
+            .vsep { display: none; }
+            #legend { padding: 9px 11px; max-width: 210px; }
+            #legend .note { display: none; }
+            #count { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="header">
+        <div class="ymenu">
+            <button class="ymenu-trigger" onclick="toggleYmenu(event)">
+                <span class="tk">🎱</span><span class="t">로또 여지도</span><span class="caret">▾</span>
+            </button>
+            <div class="ymenu-pop" id="ymenuPop">
+                <a class="ymi" href="/"><span class="ico">🏠</span>여지도 홈</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi active" href="/lottomap/"><span class="ico">🎱</span>로또 여지도</a>
+                <a class="ymi" href="/speetomap/"><span class="ico">🎟️</span>스피또 여지도</a>
+                <a class="ymi" href="/hakgunmap/"><span class="ico">🎓</span>학군 여지도</a>
+                <a class="ymi" href="/barmap/"><span class="ico">🏋️</span>철봉 여지도</a>
+                <a class="ymi" href="/popmap/"><span class="ico">👶</span>인구 여지도</a>
+                <a class="ymi" href="/foreignmap/"><span class="ico">🌏</span>외국인 여지도</a>
+                <a class="ymi" href="/childmap/"><span class="ico">🏥</span>어린이병원 여지도</a>
+                <a class="ymi" href="/runningmap/"><span class="ico">🏃</span>러닝코스 여지도</a>
+                <a class="ymi" href="/incomemap/"><span class="ico">💰</span>소득 여지도</a>
+                <a class="ymi" href="/pharmacymap/"><span class="ico">💊</span>약국 여지도</a>
+                <div class="ymi-sep"></div>
+                <a class="ymi" href="/about/"><span class="ico">ℹ️</span>여지도 소개</a>
+                <a class="ymi" href="/privacy/"><span class="ico">🔒</span>개인정보 처리방침</a>
+                <a class="ymi" href="/contact/"><span class="ico">✉️</span>문의</a>
+            </div>
+        </div>
+        <div class="controls" id="chips">
+            <span class="chip on" data-g="lotto"><span class="sw"></span>로또6/45</span>
+            <span class="chip on" data-g="annuity"><span class="sw"></span>연금복권</span>
+            <span class="vsep"></span>
+            <span class="chip mode" id="modeChip" title="1등 당첨 이력이 있는 판매점만 표시">🏆 1등 배출점만</span>
+            <span class="chip rank" id="rankBtn">🏅 명당 순위</span>
+            <span id="count"></span>
+        </div>
+    </div>
+
+    <div id="legend">
+        <b>마커 안 점 = 취급 종류</b>
+        <div class="row"><span class="sw" style="background:var(--c-lotto)"></span> 로또6/45</div>
+        <div class="row"><span class="sw" style="background:var(--c-annuity)"></span> 연금복권720+</div>
+        <div class="row"><span class="wb">3</span> 1등 배출 횟수(명당)</div>
+        <div class="note" id="coverNote">판매점 전체: 서울·경기·부산(대구 일부)<br>그 외 지역은 1등·2등 당첨점만 표시</div>
+        <div class="credit">Author: <a href="https://eine.tistory.com/entry/%ED%8F%89%ED%96%89%EB%B4%89-%EB%B0%8F-%EC%B2%A0%EB%B4%89-%EC%A7%80%EB%8F%84-%EA%B0%9C%EB%B0%9C%EA%B8%B0" target="_blank" rel="noopener">Einstrasse</a></div>
+    </div>
+
+    <div id="hint"></div>
+    <button class="geo-btn" onclick="goCurrentPosition()" title="현재 위치">◎</button>
+    <div class="src-credit" id="srcCredit">데이터 · 동행복권 복권 판매점·당첨 판매점</div>
+
+    <div id="panel">
+        <div class="phead">
+            <button class="close" onclick="closePanel()" title="닫기">✕</button>
+            <h2>🏅 1등 최다 배출 판매점</h2>
+            <div class="sub" id="panelSub">역대 1등 배출 횟수 순 · 누르면 지도에서 보기</div>
+        </div>
+        <div class="pfilter">
+            <select id="regionSel"><option value="">전국</option></select>
+        </div>
+        <div class="plist" id="plist"></div>
+    </div>
+
+    <div id="spinner">
+        <div class="loader"><div class="ring"></div><div>판매점 데이터를 불러오는 중…</div></div>
+    </div>
+
+    <script type="text/javascript"
+        src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=er3cf0cgom&callback=initMap"></script>
+    <script>
+    // 판매점은 로또6/45·연금복권을 함께 취급한다. 마커 안에 취급 종류만큼 색 점을 찍고,
+    // 1등 배출 이력이 있으면 금색 배지에 횟수를 붙인다. '1등 배출점만' 모드는 명당만 남긴다.
+    const TYPES = [
+        { key: "lotto",   color: "#d12c3f", label: "로또6/45" },
+        { key: "annuity", color: "#f39c12", label: "연금복권720+" },
+    ];
+    const DETAIL_ZOOM = 14;      // 이 줌 이상이면 개별 마커, 미만이면 클러스터(묶음)
+    const DETAIL_ZOOM_WIN = 13;  // 명당 모드: 구 단위부터 개별 마커(서울 전체 1등 배출점만 700+)
+    const MAX_RENDER = 1500;     // 개별 모드에서 후보가 이보다 많으면 확대 유도
+    const TOP_N = 100;           // 명당 순위 목록 길이
+    const AUTO_TXT = { A: "자동", M: "수동", S: "반자동" };
+
+    let map, stores = [], meta = {}, infoWindow, curPosMarker = null;
+    let activeTypes = new Set(TYPES.map(t => t.key));
+    let winOnly = false;
+    let clusterMarkers = [];
+    let idleTimer = null;
+
+    window.navermap_authFailure = function () { showMapError(); };
+
+    function initMap() {
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(37.4979, 127.0276),  // 강남 일대
+            zoom: 15,
+            zoomControl: true,
+            zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
+        });
+        infoWindow = new naver.maps.InfoWindow({ borderWidth: 0, disableAnchor: false,
+            backgroundColor: '#fff', anchorSize: new naver.maps.Size(12, 12) });
+
+        naver.maps.Event.addListener(map, 'click', () => infoWindow.close());
+        naver.maps.Event.addListener(map, 'idle', scheduleRefresh);
+
+        let tilesLoaded = false;
+        naver.maps.Event.addListener(map, 'tilesloaded', () => { tilesLoaded = true; });
+        setTimeout(() => { if (!tilesLoaded) showMapError(); }, 4500);
+
+        loadData();
+    }
+
+    function loadData() {
+        fetch('./lotto-map.json')
+            .then(r => { if (!r.ok) throw new Error('네트워크 오류'); return r.json(); })
+            .then(data => {
+                meta = data.meta || {};
+                stores = (data.stores || []).filter(s => Array.isArray(s.pos)).map(s => {
+                    s.position = new naver.maps.LatLng(s.pos[0], s.pos[1]);
+                    s.marker = null;
+                    s.w1 = s.w1 || 0; s.w2 = s.w2 || 0; s.wins = s.wins || [];
+                    return s;
+                });
+                document.getElementById('spinner').classList.add('hidden');
+                updateCredit();
+                buildRegionSelect();
+                renderRanking();
+                refresh();
+                goToInitialView();
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('spinner').innerHTML =
+                    '<div style="color:#d12c3f;font-weight:700">데이터를 불러오지 못했습니다.</div>';
+            });
+    }
+
+    function fmtYmd(ymd) {
+        if (!ymd || ymd.length !== 8) return ymd || '';
+        return `${ymd.slice(0, 4)}.${ymd.slice(4, 6)}.${ymd.slice(6, 8)}`;
+    }
+
+    function updateCredit() {
+        const el = document.getElementById('srcCredit');
+        const parts = ['데이터 · 동행복권'];
+        if (meta.stores_date) parts.push(`판매점 ${meta.stores_date} 확인`);
+        if (meta.rounds) parts.push(`당첨 ${meta.rounds[0]}~${meta.rounds[1]}회(${fmtYmd(meta.latest_draw)})`);
+        el.textContent = parts.join(' · ');
+        const regions = meta.stores_regions;
+        if (regions && regions.length) {
+            const main = regions.filter(r => r !== '대구').join('·');
+            const partial = regions.includes('대구') ? '(대구 일부)' : '';
+            document.getElementById('coverNote').innerHTML =
+                `판매점 전체: ${main}${partial}<br>그 외 지역은 1등·2등 당첨점만 표시`;
+        }
+    }
+
+    // 켜진 종류 중 하나라도 취급하면 표시(OR). 명당 모드에선 1등 이력 필수.
+    function passesFilter(s) {
+        if (winOnly && !s.w1) return false;
+        if (s.store === false && !s.w1 && !s.w2) return false;
+        return TYPES.some(t => activeTypes.has(t.key) && s[t.key] === 'Y')
+            || (!!s.w1 || !!s.w2) && s.lotto !== 'Y' && s.annuity !== 'Y';  // 품목 정보 없는 당첨점은 그대로 표시
+    }
+
+    // 마커 아이콘: 흰 알약 안에 취급 종류 색 점 + (1등 이력 시) 금색 횟수 배지
+    function markerIcon(s) {
+        const dots = TYPES.filter(t => activeTypes.has(t.key) && s[t.key] === 'Y');
+        const D = 8, GAP = 3, PAD = 4, BORD = 2;
+        let innerW = Math.max(D, dots.length * D + Math.max(0, dots.length - 1) * GAP);
+        let inner = dots.map(t =>
+            `<span style="width:${D}px;height:${D}px;border-radius:50%;background:${t.color}"></span>`).join('');
+        let border = '#fff', shadow = '0 1px 4px rgba(0,0,0,0.4)';
+        if (s.w1) {
+            const bw = s.w1 >= 10 ? 22 : 16;
+            inner += `<span style="min-width:${bw}px;height:16px;padding:0 4px;border-radius:999px;background:#f5b301;
+                        color:#1f2937;font-size:10.5px;font-weight:800;display:inline-flex;align-items:center;
+                        justify-content:center;line-height:1">${s.w1}</span>`;
+            innerW += (dots.length ? GAP : 0) + bw;
+            border = '#f5b301'; shadow = '0 1px 6px rgba(180,83,9,0.55)';
+        }
+        const W = innerW + PAD * 2 + BORD * 2;
+        const H = 16 + PAD * 2 + BORD * 2;
+        const content =
+            `<div style="display:inline-flex;align-items:center;gap:${GAP}px;padding:${PAD}px;height:${H}px;
+                background:#fff;border:${BORD}px solid ${border};border-radius:999px;box-sizing:border-box;
+                box-shadow:${shadow};cursor:pointer">${inner}</div>`;
+        return { content, anchor: new naver.maps.Point(W / 2, H / 2) };
+    }
+
+    function createMarker(s) {
+        const marker = new naver.maps.Marker({
+            position: s.position, title: s.title, icon: markerIcon(s), zIndex: s.w1 ? 100 + Math.min(s.w1, 50) : 10
+        });
+        naver.maps.Event.addListener(marker, 'click', () => openInfo(s, marker));
+        s.marker = marker;
+    }
+
+    function updateAllIcons() {
+        for (const s of stores) if (s.marker) s.marker.setIcon(markerIcon(s));
+    }
+
+    function esc(t) { return String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+    function badge(cls, label) { return `<span class="badge ${cls}">${label}</span>`; }
+
+    function openInfo(s, marker) {
+        let badges = '';
+        if (s.lotto === 'Y')   badges += badge('blotto', '로또6/45');
+        if (s.annuity === 'Y') badges += badge('bann', '연금복권720+');
+        if (s.store === false) badges += badge('bout', '당첨 이력으로 표시');
+        if (!badges) badges = '<span class="none">취급 정보 없음</span>';
+
+        let winsum, winlist = '';
+        if (s.w1 || s.w2) {
+            winsum = `<div class="winsum">${s.w1 ? `<span>🏆 1등 ${s.w1}회</span>` : ''}${s.w2 ? `<span>🥈 2등 ${s.w2}회</span>` : ''}</div>`;
+            const SHOW = 8;
+            const rows = s.wins.slice(0, SHOW).map(w => {
+                const [rno, ymd, rank, auto, n] = w;
+                const extra = [rank === 1 && AUTO_TXT[auto] ? AUTO_TXT[auto] : '', n > 1 ? `${n}장` : ''].filter(Boolean).join(' · ');
+                return `<div class="r"><span class="rk r${rank}">${rank}등</span><span>${rno}회</span>
+                        <span class="dt">${fmtYmd(ymd)}</span>${extra ? `<span class="dt">${extra}</span>` : ''}</div>`;
+            }).join('');
+            const more = s.wins.length > SHOW ? `<div class="more">외 ${s.wins.length - SHOW}건</div>` : '';
+            winlist = `<div class="wins">${rows}${more}</div>`;
+        } else {
+            winsum = `<div class="winsum none">1·2등 당첨 이력 없음</div>`;
+        }
+
+        const name = esc(s.title), lat = s.pos[0], lng = s.pos[1];
+        const links = `<div class="links">
+            <a class="tmap" href="tmap://route?goalname=${encodeURIComponent(s.title || '')}&goalx=${lng}&goaly=${lat}">T맵</a>
+            <a class="kakao" href="https://map.kakao.com/link/map/${encodeURIComponent(s.title || '')},${lat},${lng}" target="_blank" rel="noopener">카카오맵</a>
+            <a class="naver" href="https://map.naver.com/p/search/${encodeURIComponent(s.title || '')}?c=${lng},${lat},16,0,0,0,dh" target="_blank" rel="noopener">네이버</a>
+        </div>`;
+
+        infoWindow.setContent(
+            `<div class="iw">
+                <div class="name">${name}</div>
+                <div class="addr">${esc(s.addr)}</div>
+                <div class="badges">${badges}</div>
+                ${winsum}${winlist}${links}
+                ${s.date ? `<div class="date">판매점 정보 확인일: ${s.date}</div>` : ''}
+            </div>`);
+        infoWindow.open(map, marker);
+    }
+
+    function scheduleRefresh() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(refresh, 120);
+    }
+
+    function detailZoom() { return winOnly ? DETAIL_ZOOM_WIN : DETAIL_ZOOM; }
+
+    function refresh() {
+        if (!map || !stores.length) return;
+        const zoom = map.getZoom();
+        const bounds = map.getBounds();
+        if (zoom >= detailZoom()) {
+            clearClusters();
+            showIndividual(bounds);
+        } else {
+            hideIndividual();
+            showClusters(bounds, zoom);
+        }
+    }
+
+    function showIndividual(bounds) {
+        const inView = [];
+        for (const s of stores) {
+            const ok = passesFilter(s) && bounds.hasLatLng(s.position);
+            if (ok) inView.push(s);
+            else if (s.marker) s.marker.setMap(null);
+        }
+        if (inView.length > MAX_RENDER) {
+            for (const s of inView) if (s.marker) s.marker.setMap(null);
+            setHint(`이 영역에 ${inView.length.toLocaleString()}곳 — 더 확대해 보세요`);
+            setCount(`${inView.length.toLocaleString()}곳 (확대 필요)`);
+            return;
+        }
+        clearHint();
+        for (const s of inView) {
+            if (!s.marker) createMarker(s);
+            s.marker.setMap(map);
+        }
+        const n1 = inView.filter(s => s.w1).length;
+        setCount(`이 화면 ${inView.length.toLocaleString()}곳${n1 ? ` · 1등 배출 ${n1}곳` : ''}`);
+    }
+
+    function hideIndividual() {
+        for (const s of stores) if (s.marker && s.marker.getMap()) s.marker.setMap(null);
+    }
+
+    function showClusters(bounds, zoom) {
+        clearHint();
+        clearClusters();
+        const cell = (360 / (256 * Math.pow(2, zoom))) * 75;
+        const buckets = new Map();
+        for (const s of stores) {
+            if (!passesFilter(s) || !bounds.hasLatLng(s.position)) continue;
+            const key = Math.floor(s.pos[1] / cell) + '_' + Math.floor(s.pos[0] / cell);
+            let b = buckets.get(key);
+            if (!b) { b = { sumLat: 0, sumLng: 0, n: 0, w1: 0 }; buckets.set(key, b); }
+            b.sumLat += s.pos[0]; b.sumLng += s.pos[1]; b.n++; b.w1 += s.w1;
+        }
+        let total = 0;
+        for (const b of buckets.values()) {
+            total += b.n;
+            clusterMarkers.push(makeCluster(b.sumLat / b.n, b.sumLng / b.n, b.n, b.w1, zoom));
+        }
+        setCount(total ? `${total.toLocaleString()}곳 · ${buckets.size}개 지역묶음`
+                       : (winOnly ? '이 영역에 1등 배출점 없음' : '이 영역에 판매점 없음'));
+    }
+
+    // 클러스터: 명당 모드에선 묶음 안 1등 배출 합계를 금색으로 표시
+    function makeCluster(lat, lng, count, w1, zoom) {
+        const r = Math.round(Math.min(34, 16 + Math.sqrt(count) * 2.0));
+        const d = r * 2;
+        const fs = count >= 1000 ? 12 : count >= 100 ? 13 : 14;
+        const label = count >= 1000 ? (count / 1000).toFixed(1) + 'k' : count;
+        const bg = winOnly ? 'rgba(217,119,6,0.9)' : 'rgba(209,44,63,0.85)';
+        const sub = winOnly && w1 ? `<div style="position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);
+                background:#f5b301;color:#1f2937;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:999px;
+                white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3)">🏆${w1}</div>` : '';
+        const content =
+            `<div style="position:relative;width:${d}px;height:${d}px;border-radius:50%;box-sizing:border-box;
+                background:${bg};border:2.5px solid #fff;
+                box-shadow:0 2px 7px rgba(0,0,0,0.35);color:#fff;font-weight:800;
+                font-size:${fs}px;display:flex;align-items:center;justify-content:center;
+                cursor:pointer">${label}${sub}</div>`;
+        const m = new naver.maps.Marker({
+            position: new naver.maps.LatLng(lat, lng), map, zIndex: 200,
+            icon: { content, anchor: new naver.maps.Point(r, r) }
+        });
+        naver.maps.Event.addListener(m, 'click', () => {
+            const target = Math.min(zoom + 3, detailZoom() + 1);
+            if (map.morph) map.morph(new naver.maps.LatLng(lat, lng), target);
+            else { map.setCenter(new naver.maps.LatLng(lat, lng)); map.setZoom(target); }
+        });
+        return m;
+    }
+
+    function clearClusters() {
+        for (const m of clusterMarkers) m.setMap(null);
+        clusterMarkers = [];
+    }
+
+    function setCount(t) { document.getElementById('count').textContent = t; }
+    function setHint(t) { const h = document.getElementById('hint'); h.textContent = t; h.classList.add('show'); }
+    function clearHint() { document.getElementById('hint').classList.remove('show'); }
+
+    // ── 칩: 종류 토글 / 명당 모드 / 순위 드로어 ──
+    document.getElementById('chips').addEventListener('click', e => {
+        const chip = e.target.closest('.chip');
+        if (!chip) return;
+        if (chip.id === 'rankBtn') { togglePanel(); return; }
+        if (chip.id === 'modeChip') {
+            winOnly = !winOnly;
+            chip.classList.toggle('on', winOnly);
+            infoWindow.close();
+            refresh();
+            return;
+        }
+        const g = chip.dataset.g;
+        if (!g) return;
+        if (activeTypes.has(g)) { activeTypes.delete(g); chip.classList.remove('on'); }
+        else { activeTypes.add(g); chip.classList.add('on'); }
+        infoWindow.close();
+        updateAllIcons();
+        refresh();
+    });
+
+    // ── 명당 순위 드로어 ──
+    function buildRegionSelect() {
+        const sel = document.getElementById('regionSel');
+        const cnt = new Map();
+        for (const s of stores) if (s.w1) cnt.set(s.region || '기타', (cnt.get(s.region || '기타') || 0) + 1);
+        [...cnt.entries()].sort((a, b) => b[1] - a[1]).forEach(([r, n]) => {
+            const o = document.createElement('option');
+            o.value = r; o.textContent = `${r} (${n})`;
+            sel.appendChild(o);
+        });
+        sel.addEventListener('change', renderRanking);
+    }
+
+    function renderRanking() {
+        const region = document.getElementById('regionSel').value;
+        const list = stores.filter(s => s.w1 && (!region || s.region === region))
+            .sort((a, b) => b.w1 - a.w1 || b.w2 - a.w2)
+            .slice(0, TOP_N);
+        const el = document.getElementById('plist');
+        if (!list.length) { el.innerHTML = '<div class="pempty">1등 배출 판매점이 없습니다.</div>'; return; }
+        el.innerHTML = list.map((s, i) => `
+            <div class="pitem" data-id="${esc(s.id)}">
+                <div class="no ${i < 3 ? 'top' : ''}">${i + 1}</div>
+                <div class="body"><div class="nm">${esc(s.title)}</div><div class="ad">${esc(s.addr)}</div></div>
+                <div class="w">🏆 <b>${s.w1}</b>회<br><span>2등 ${s.w2}회</span></div>
+            </div>`).join('');
+        document.getElementById('panelSub').textContent =
+            `${region || '전국'} · 역대 1등 배출 횟수 순 상위 ${list.length}곳 · 누르면 지도에서 보기`;
+    }
+
+    document.getElementById('plist').addEventListener('click', e => {
+        const item = e.target.closest('.pitem');
+        if (!item) return;
+        const s = stores.find(x => x.id === item.dataset.id);
+        if (!s) return;
+        if (window.innerWidth < 720) closePanel();
+        focusStore(s);
+    });
+
+    function focusStore(s) {
+        const target = Math.max(detailZoom(), 16);
+        const done = () => {
+            refresh();
+            if (!s.marker) createMarker(s);
+            s.marker.setMap(map);
+            openInfo(s, s.marker);
+        };
+        naver.maps.Event.once(map, 'idle', done);
+        if (map.morph) map.morph(s.position, target);
+        else { map.setCenter(s.position); map.setZoom(target); }
+    }
+
+    function togglePanel() { document.getElementById('panel').classList.toggle('open'); }
+    function closePanel() { document.getElementById('panel').classList.remove('open'); }
+
+    // ── 여지도 전환 메뉴 ──
+    function toggleYmenu(e) {
+        e.stopPropagation();
+        document.getElementById('ymenuPop').classList.toggle('open');
+    }
+    document.addEventListener('click', () => {
+        const p = document.getElementById('ymenuPop');
+        if (p) p.classList.remove('open');
+    });
+
+    // ── 현재 위치 ──
+    function placeCurPos(loc) {
+        if (curPosMarker) curPosMarker.setMap(null);
+        curPosMarker = new naver.maps.Marker({
+            position: loc, map, zIndex: 1000,
+            icon: { content: '<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px #2563eb"></div>',
+                    anchor: new naver.maps.Point(8, 8) }
+        });
+    }
+
+    function goCurrentPosition() {
+        if (!navigator.geolocation) return alert('현재 위치를 사용할 수 없습니다.');
+        navigator.geolocation.getCurrentPosition(p => {
+            const loc = new naver.maps.LatLng(p.coords.latitude, p.coords.longitude);
+            map.setZoom(15); map.setCenter(loc); placeCurPos(loc);
+        }, () => alert('현재 위치를 가져올 수 없습니다.'));
+    }
+
+    function goToInitialView() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            p => {
+                const loc = new naver.maps.LatLng(p.coords.latitude, p.coords.longitude);
+                map.setCenter(loc); map.setZoom(15); placeCurPos(loc);
+            },
+            () => {},
+            { timeout: 6000, maximumAge: 600000 }
+        );
+    }
+
+    function showMapError() {
+        if (document.getElementById('mapError')) return;
+        const sp = document.getElementById('spinner');
+        if (sp) sp.classList.add('hidden');
+        const div = document.createElement('div');
+        div.id = 'mapError';
+        div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:50;max-width:420px;background:#fff;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.2);padding:22px 24px;text-align:center';
+        div.innerHTML = `<div style="font-size:18px;font-weight:800;margin-bottom:8px">🗺️ 지도를 표시할 수 없습니다</div>
+            <p style="font-size:13px;color:#6b7280;line-height:1.6;margin:0">네이버 지도 API가 현재 주소에서 인증되지 않았습니다.<br>
+            아래 주소를 네이버 클라우드 플랫폼 <b>Maps ‘Web 서비스 URL’</b>에 등록하면 표시됩니다.</p>
+            <code style="display:inline-block;margin-top:10px;padding:6px 10px;background:#f3f4f6;border-radius:6px;font-size:12px">${location.origin}</code>`;
+        document.body.appendChild(div);
+    }
+    </script>
+</body>
+</html>

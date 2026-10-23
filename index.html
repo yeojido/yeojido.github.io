@@ -63,6 +63,7 @@
         .card.running .bar { background: linear-gradient(90deg, #0c8599, #66d9e8); }
         .card.income  .bar { background: linear-gradient(90deg, #047857, #6ee7b7); }
         .card.pharm   .bar { background: linear-gradient(90deg, #087f5b, #38d9a9); }
+        .card.lotto   .bar { background: linear-gradient(90deg, #b45309, #fbbf24); }
         .card .emoji {
             font-size: 38px; width: 64px; height: 64px; border-radius: 16px;
             display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
@@ -76,6 +77,7 @@
         .card.running .emoji { background: #e3fafc; }
         .card.income  .emoji { background: #ecfdf5; }
         .card.pharm   .emoji { background: #e6fcf5; }
+        .card.lotto   .emoji { background: #fef3c7; }
         .card h2 { margin: 0 0 7px; font-size: 19px; font-weight: 800; letter-spacing: -0.5px; }
         .card p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.55; flex: 1; }
         .card .go {
@@ -115,6 +117,14 @@
         </div>
 
         <div class="grid">
+            <a class="card lotto" href="/lottomap/">
+                <span class="bar"></span>
+                <div class="emoji">🎱</div>
+                <h2>로또 여지도</h2>
+                <p>로또 판매점과 역대 1등·2등 당첨 명당을 한눈에. 회차별 당첨 이력과 1등 최다 배출점 순위까지.</p>
+                <span class="go">지도 열기 <span class="arr">→</span></span>
+            </a>
+
             <a class="card speeto" href="/speetomap/">
                 <span class="bar"></span>
                 <div class="emoji">🎟️</div>
@@ -192,7 +202,7 @@
             <h2>여지도는</h2>
             <p>
                 흩어져 있는 공공데이터를 지도 위에 올려, 우리 동네 정보를 한눈에 볼 수 있게 만든 지도 모음입니다.
-                복권 판매점, 학교 통계, 인구, 소득, 어린이병원, 약국, 러닝코스까지 — 표로만 공개되어 찾아보기
+                복권 판매점, 로또 당첨 명당, 학교 통계, 인구, 소득, 어린이병원, 약국, 러닝코스까지 — 표로만 공개되어 찾아보기
                 어려운 정보를 주제별 지도로 옮겼습니다. 회원가입이나 앱 설치 없이 무료로 이용할 수 있습니다.
             </p>
             <a href="/about/">지도별 안내와 데이터 출처 보기 →</a>
